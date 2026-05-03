@@ -16,13 +16,13 @@
 
 <br>
 
-<button onclick="buyClickUpgrade()">+1 Click (Cost: <span id="clickCost">10</span>)</button>
+<button onclick="buyClick()">+Click (Cost: <span id="clickCost">10</span>)</button>
 <br><br>
-<button onclick="buyAutoUpgrade()">+1 Auto (Cost: <span id="autoCost">50</span>)</button>
+<button onclick="buyAuto()">+Auto (Cost: <span id="autoCost">50</span>)</button>
 <br><br>
-<button onclick="buyMultiplier()">x2 Multiplier (Cost: <span id="multiCost">200</span>)</button>
+<button onclick="buyMulti()">x2 Multiplier (Cost: <span id="multiCost">200</span>)</button>
 <br><br>
-<button onclick="buyMega()">💥 MEGA Boost (Cost: <span id="megaCost">1000</span>)</button>
+<button onclick="buyMega()">💥 Mega Boost (Cost: <span id="megaCost">1000</span>)</button>
 
 <script>
 let score = 0;
@@ -35,62 +35,98 @@ let autoCost = 50;
 let multiCost = 200;
 let megaCost = 1000;
 
-function clickGame() {
+// FORMAT NUMBERS
+function format(n){
+  if(n>=1e9)return (n/1e9).toFixed(2)+"B";
+  if(n>=1e6)return (n/1e6).toFixed(2)+"M";
+  if(n>=1e3)return (n/1e3).toFixed(2)+"K";
+  return Math.floor(n);
+}
+
+// CLICK
+function clickGame(){
   score += perClick * multi;
   update();
 }
 
-function buyClickUpgrade() {
-  if (score >= clickCost) {
-    score -= clickCost;
-    perClick++;
-    clickCost = Math.floor(clickCost * 1.5);
+// BUY UPGRADES
+function buyClick(){
+  if(score>=clickCost){
+    score-=clickCost;
+    perClick+=1;
+    clickCost*=1.4;
     update();
   }
 }
 
-function buyAutoUpgrade() {
-  if (score >= autoCost) {
-    score -= autoCost;
-    auto++;
-    autoCost = Math.floor(autoCost * 1.7);
+function buyAuto(){
+  if(score>=autoCost){
+    score-=autoCost;
+    auto+=1;
+    autoCost*=1.6;
     update();
   }
 }
 
-function buyMultiplier() {
-  if (score >= multiCost) {
-    score -= multiCost;
-    multi *= 2;
-    multiCost = Math.floor(multiCost * 3);
+function buyMulti(){
+  if(score>=multiCost){
+    score-=multiCost;
+    multi*=2;
+    multiCost*=3;
     update();
   }
 }
 
-function buyMega() {
-  if (score >= megaCost) {
-    score -= megaCost;
-    perClick += 50;
-    auto += 10;
-    megaCost = Math.floor(megaCost * 5);
+function buyMega(){
+  if(score>=megaCost){
+    score-=megaCost;
+    perClick+=20;
+    auto+=5;
+    megaCost*=5;
     update();
   }
 }
 
-setInterval(() => {
+// AUTO INCOME
+setInterval(()=>{
   score += auto * multi;
   update();
-}, 1000);
+},1000);
 
-function update() {
-  document.getElementById("score").innerText = Math.floor(score);
-  document.getElementById("perClick").innerText = perClick;
-  document.getElementById("auto").innerText = auto;
+// SAVE GAME
+setInterval(()=>{
+  localStorage.setItem("shadowGame", JSON.stringify({
+    score, perClick, auto, multi,
+    clickCost, autoCost, multiCost, megaCost
+  }));
+},2000);
+
+// LOAD GAME
+window.onload = ()=>{
+  let save = JSON.parse(localStorage.getItem("shadowGame"));
+  if(save){
+    score=save.score||0;
+    perClick=save.perClick||1;
+    auto=save.auto||0;
+    multi=save.multi||1;
+    clickCost=save.clickCost||10;
+    autoCost=save.autoCost||50;
+    multiCost=save.multiCost||200;
+    megaCost=save.megaCost||1000;
+  }
+  update();
+}
+
+// UPDATE UI
+function update(){
+  document.getElementById("score").innerText = format(score);
+  document.getElementById("perClick").innerText = format(perClick);
+  document.getElementById("auto").innerText = format(auto);
   document.getElementById("multi").innerText = multi;
-  document.getElementById("clickCost").innerText = clickCost;
-  document.getElementById("autoCost").innerText = autoCost;
-  document.getElementById("multiCost").innerText = multiCost;
-  document.getElementById("megaCost").innerText = megaCost;
+  document.getElementById("clickCost").innerText = format(clickCost);
+  document.getElementById("autoCost").innerText = format(autoCost);
+  document.getElementById("multiCost").innerText = format(multiCost);
+  document.getElementById("megaCost").innerText = format(megaCost);
 }
 </script>
 
