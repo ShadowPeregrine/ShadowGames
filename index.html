@@ -12,23 +12,31 @@
 <p>Score: <span id="score">0</span></p>
 <p>Per click: <span id="perClick">1</span></p>
 <p>Auto/sec: <span id="auto">0</span></p>
+<p>Multiplier: x<span id="multi">1</span></p>
 
 <br>
 
-<button onclick="buyClickUpgrade()">Upgrade Click (Cost: <span id="clickCost">10</span>)</button>
+<button onclick="buyClickUpgrade()">+1 Click (Cost: <span id="clickCost">10</span>)</button>
 <br><br>
-<button onclick="buyAutoUpgrade()">Auto Click (Cost: <span id="autoCost">50</span>)</button>
+<button onclick="buyAutoUpgrade()">+1 Auto (Cost: <span id="autoCost">50</span>)</button>
+<br><br>
+<button onclick="buyMultiplier()">x2 Multiplier (Cost: <span id="multiCost">200</span>)</button>
+<br><br>
+<button onclick="buyMega()">💥 MEGA Boost (Cost: <span id="megaCost">1000</span>)</button>
 
 <script>
 let score = 0;
 let perClick = 1;
 let auto = 0;
+let multi = 1;
 
 let clickCost = 10;
 let autoCost = 50;
+let multiCost = 200;
+let megaCost = 1000;
 
 function clickGame() {
-  score += perClick;
+  score += perClick * multi;
   update();
 }
 
@@ -50,17 +58,39 @@ function buyAutoUpgrade() {
   }
 }
 
+function buyMultiplier() {
+  if (score >= multiCost) {
+    score -= multiCost;
+    multi *= 2;
+    multiCost = Math.floor(multiCost * 3);
+    update();
+  }
+}
+
+function buyMega() {
+  if (score >= megaCost) {
+    score -= megaCost;
+    perClick += 50;
+    auto += 10;
+    megaCost = Math.floor(megaCost * 5);
+    update();
+  }
+}
+
 setInterval(() => {
-  score += auto;
+  score += auto * multi;
   update();
 }, 1000);
 
 function update() {
-  document.getElementById("score").innerText = score;
+  document.getElementById("score").innerText = Math.floor(score);
   document.getElementById("perClick").innerText = perClick;
   document.getElementById("auto").innerText = auto;
+  document.getElementById("multi").innerText = multi;
   document.getElementById("clickCost").innerText = clickCost;
   document.getElementById("autoCost").innerText = autoCost;
+  document.getElementById("multiCost").innerText = multiCost;
+  document.getElementById("megaCost").innerText = megaCost;
 }
 </script>
 
