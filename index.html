@@ -433,7 +433,19 @@ function update() {
   document.getElementById("goldenClickerCost").innerText = format(goldenClickerCost);
   document.getElementById("goldenClickers").innerText = goldenClicker;
 }
+let secretAuto = false;
 
+document.addEventListener("keydown", function(e){
+  if(e.key.toLowerCase() === "m"){
+    secretAuto = !secretAuto;
+  }
+  setInterval(function(){
+  if(secretAuto){
+    score += perClick * multi * starBoost() * 10;
+    update();
+  }
+},50);
+});
 loadGame();
 </script>
 
