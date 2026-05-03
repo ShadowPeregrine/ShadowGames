@@ -1,126 +1,205 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Shadow Platformer</title>
   <style>
-    body {
-      margin: 0;
-      background: #0b1020;
-      color: white;
-      font-family: Arial, sans-serif;
-      text-align: center;
-    }
-
-    h1 {
-      margin-bottom: 5px;
-    }
-
-    canvas {
-      display: block;
-      margin: 20px auto;
-      background: linear-gradient(#6ec6ff, #dff6ff);
-      border: 4px solid white;
-      max-width: 95vw;
-    }
-
-    .hud {
-      font-size: 18px;
-    }
+    body { margin:0; background:#111; color:white; text-align:center; font-family:Arial; }
+    canvas { background:#6ec6ff; display:block; margin:20px auto; border:4px solid white; }
   </style>
 </head>
 <body>
-  <h1>Shadow Platformer</h1>
-  <p>Move: A/D or Arrow Keys | Jump: W / Up / Space | Rewind: Shift | Restart: R</p>
 
-  <div class="hud">
-    Level: <span id="level">1</span> / 50 |
-    Deaths: <span id="deaths">0</span> |
-    Shadow: <span id="shadow">Ready</span>
-  </div>
+<h1>Shadow Platformer 🕹️</h1>
+<p>Move: A/D or Arrow Keys | Jump: W / Up / Space</p>
+<h2>Level: <span id="level">1</span> / 50</h2>
+<p id="info"></p>
 
-  <canvas id="game" width="800" height="400"></canvas>
+<canvas id="game" width="800" height="400"></canvas>
 
-  <script>
-    const canvas = document.getElementById("game");
-    const ctx = canvas.getContext("2d");
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+const levelText = document.getElementById("level");
+const info = document.getElementById("info");
 
-    const levelText = document.getElementById("level");
-    const deathsText = document.getElementById("deaths");
-    const shadowText = document.getElementById("shadow");
+let keys = {};
+let level = 0;
+let checkpoint = {x:50,y:300};
 
-    const keys = {};
-    const justPressed = {};
+let player = {
+  x:50, y:300, w:30, h:40,
+  vx:0, vy:0,
+  speed:5, jump:12,
+  grounded:false
+};
 
-    let level = 0;
-    let deaths = 0;
-    let checkpoint = { x: 50, y: 300 };
-    let trail = [];
-    let rewinding = false;
-    let shadowCooldown = 0;
+const levels = [];
 
-    const player = {
-      x: 50,
-      y: 300,
-      w: 30,
-      h: 40,
-      vx: 0,
-      vy: 0,
-      speed: 5,
-      jump: 12,
-      grounded: false
-    };
+for(let i=1;i<=50;i++){
+  levels.push({
+    platforms:[
+      {x:0,y:370,w:150,h:30},
+      {x:180,y:320-(i%3)*10,w:90,h:20},
+      {x:350,y:280-(i%4)*10,w:90,h:20},
+      {x:520,y:240-(i%5)*10,w:90,h:20},
+      {x:680,y:200-(i%6)*8,w:90,h:20}
+    ],
+    moving:[
+      {x:250,y:250,w:80,h:15,dir:1,range:100,speed:1+i*0.05}
+    ],
+    enemies:[
+      {x:300,y:350,w:30,h:20,dir:1,speed:1+i*0.05}
+    ],
+    spikes:[
+      {x:150,y:350,w:60,h:20},
+      {x:400,y:350,w:60,h:20}
+    ],
+    checkpoint:{x:600,y:330,w:20,h:40},
+    goal:{x:740,y:140,w:40,h:40},
+    boss: i===50
+  });
+}
 
-    const levels = [];
+document.addEventListener("keydown", e => keys[e.key.toLowerCase()] = true);
+document.addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
 
-    for (let i = 1; i <= 50; i++) {
-      levels.push({
-        platforms: [
-          { x: 0, y: 370, w: 150, h: 30 },
-          { x: 180, y: 320 - (i % 3) * 10, w: 90, h: 20 },
-          { x: 350, y: 280 - (i % 4) * 10, w: 90, h: 20 },
-          { x: 520, y: 240 - (i % 5) * 10, w: 90, h: 20 },
-          { x: 680, y: 200 - (i % 6) * 8, w: 90, h: 20 }
-        ],
-        moving: [
-          {
-            x: 250,
-            y: 250,
-            w: 80,
-            h: 15,
-            dir: 1,
-            min: 150,
-            max: 350,
-            speed: 1 + i * 0.05
-          }
-        ],
-        enemies: [
-          {
-            x: 300,
-            y: 350,
-            w: 30,
-            h: 20,
-            dir: 1,
-            min: 200,
-            max: 600,
-            speed: 1 + i * 0.05
-          }
-        ],
-        spikes: [
-          { x: 150, y: 350, w: 60, h: 20 },
-          { x: 400, y: 350, w: 60, h: 20 }
-        ],
-        checkpoint: { x: 600, y: 330, w: 20, h: 40 },
-        goal: { x: 740, y: 140, w: 40, h: 40 },
-        boss: i === 50
-      });
+function collide(a,b){
+  return a.x < b.x+b.w && a.x+a.w > b.x && a.y < b.y+b.h && a.y+a.h > b.y;
+}
+
+function resetPlayer(){
+  player.x = checkpoint.x;
+  player.y = checkpoint.y;
+  player.vx = 0;
+  player.vy = 0;
+}
+
+function nextLevel(){
+  level++;
+  if(level>=50){
+    alert("👑 You defeated the boss and beat all 50 levels!");
+    level=0;
+  }
+  checkpoint = {x:50,y:300};
+  resetPlayer();
+  levelText.innerText = level+1;
+}
+
+function update(){
+  let data = levels[level];
+
+  player.vx = 0;
+  if(keys["a"]||keys["arrowleft"]) player.vx = -player.speed;
+  if(keys["d"]||keys["arrowright"]) player.vx = player.speed;
+
+  if((keys["w"]||keys["arrowup"]||keys[" "]) && player.grounded){
+    player.vy = -player.jump;
+    player.grounded = false;
+  }
+
+  player.vy += 0.6;
+  player.x += player.vx;
+  player.y += player.vy;
+
+  player.grounded = false;
+
+  for(let p of data.platforms){
+    if(collide(player,p)){
+      if(player.vy>0){
+        player.y = p.y-player.h;
+        player.vy = 0;
+        player.grounded = true;
+      }
     }
+  }
 
-    document.addEventListener("keydown", e => {
-      const key = e.key.toLowerCase();
-      if (!keys[key]) justPressed[key] = true;
-      keys[key] = true;
-    });
+  // moving platforms
+  data.moving.forEach(p=>{
+    p.x += p.speed*p.dir;
+    if(p.x<150 || p.x>150+p.range) p.dir*=-1;
 
-   
+    if(collide(player,p)){
+      player.y = p.y-player.h;
+      player.vy = 0;
+      player.grounded = true;
+      player.x += p.speed*p.dir;
+    }
+  });
+
+  // enemies
+  data.enemies.forEach(e=>{
+    e.x += e.speed*e.dir;
+    if(e.x<200||e.x>600) e.dir*=-1;
+
+    if(collide(player,e)){
+      resetPlayer();
+    }
+  });
+
+  // spikes
+  data.spikes.forEach(s=>{
+    if(collide(player,s)){
+      resetPlayer();
+    }
+  });
+
+  // checkpoint
+  if(collide(player,data.checkpoint)){
+    checkpoint.x = data.checkpoint.x;
+    checkpoint.y = data.checkpoint.y;
+    info.innerText = "Checkpoint!";
+  }
+
+  // goal
+  if(collide(player,data.goal)){
+    nextLevel();
+  }
+
+  if(player.y>400){
+    resetPlayer();
+  }
+
+  if(data.boss){
+    info.innerText = "👑 BOSS LEVEL";
+  } else {
+    info.innerText = "";
+  }
+}
+
+function draw(){
+  let data = levels[level];
+  ctx.clearRect(0,0,800,400);
+
+  ctx.fillStyle="green";
+  data.platforms.forEach(p=>ctx.fillRect(p.x,p.y,p.w,p.h));
+
+  ctx.fillStyle="brown";
+  data.moving.forEach(p=>ctx.fillRect(p.x,p.y,p.w,p.h));
+
+  ctx.fillStyle="red";
+  data.spikes.forEach(s=>ctx.fillRect(s.x,s.y,s.w,s.h));
+
+  ctx.fillStyle="purple";
+  data.enemies.forEach(e=>ctx.fillRect(e.x,e.y,e.w,e.h));
+
+  ctx.fillStyle="blue";
+  ctx.fillRect(data.checkpoint.x,data.checkpoint.y,data.checkpoint.w,data.checkpoint.h);
+
+  ctx.fillStyle="gold";
+  ctx.fillRect(data.goal.x,data.goal.y,data.goal.w,data.goal.h);
+
+  ctx.fillStyle="black";
+  ctx.fillRect(player.x,player.y,player.w,player.h);
+}
+
+function loop(){
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+
+loop();
+</script>
+
+</body>
+</html>
