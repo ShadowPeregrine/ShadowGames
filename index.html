@@ -8,18 +8,21 @@
 <h1>Shadow Games 🎮</h1>
 
 <button onclick="clickGame()">Click Game</button>
+
 <p>Score: <span id="score">0</span></p>
 <p>Per click: <span id="perClick">1</span></p>
-<p>Auto per second: <span id="auto">0</span></p>
+<p>Auto/sec: <span id="auto">0</span></p>
 
-<button onclick="buyClickUpgrade()">Buy Click Upgrade - Cost: <span id="clickCost">10</span></button>
+<br>
+
+<button onclick="buyClickUpgrade()">Upgrade Click (Cost: <span id="clickCost">10</span>)</button>
 <br><br>
-<button onclick="buyAutoUpgrade()">Buy Auto Upgrade - Cost: <span id="autoCost">50</span></button>
+<button onclick="buyAutoUpgrade()">Auto Click (Cost: <span id="autoCost">50</span>)</button>
 
 <script>
 let score = 0;
 let perClick = 1;
-let autoPerSecond = 0;
+let auto = 0;
 
 let clickCost = 10;
 let autoCost = 50;
@@ -41,21 +44,21 @@ function buyClickUpgrade() {
 function buyAutoUpgrade() {
   if (score >= autoCost) {
     score -= autoCost;
-    autoPerSecond++;
+    auto++;
     autoCost = Math.floor(autoCost * 1.7);
     update();
   }
 }
 
 setInterval(() => {
-  score += autoPerSecond;
+  score += auto;
   update();
 }, 1000);
 
 function update() {
   document.getElementById("score").innerText = score;
   document.getElementById("perClick").innerText = perClick;
-  document.getElementById("auto").innerText = autoPerSecond;
+  document.getElementById("auto").innerText = auto;
   document.getElementById("clickCost").innerText = clickCost;
   document.getElementById("autoCost").innerText = autoCost;
 }
