@@ -48,16 +48,8 @@
 <ol id="leaderboard"></ol>
 
 <script>
-let score = 0;
-let perClick = 1;
-let auto = 0;
-let multi = 1;
-let stars = 0;
-
-let clickCost = 10;
-let autoCost = 50;
-let multiCost = 200;
-let megaCost = 1000;
+let score = 0, perClick = 1, auto = 0, multi = 1, stars = 0;
+let clickCost = 10, autoCost = 50, multiCost = 200, megaCost = 1000;
 let goldenCost = 1000;
 
 let superClickCost = 10000;
@@ -69,387 +61,151 @@ let kingCost = 2000000;
 let goldenClicker = 0;
 let goldenClickerCost = 20000;
 
-let totalClicks = 0;
 let startTime = Date.now();
 let lastSave = Date.now();
-
 let secretAuto = false;
 
-function starBoost() {
-  return 1 + stars * 0.25;
+function starBoost(){ return 1 + stars * 0.25; }
+
+function getTimePlayed(){
+  let s=Math.floor((Date.now()-startTime)/1000);
+  return Math.floor(s/60)+"m "+(s%60)+"s";
 }
 
-function getTimePlayed() {
-  let seconds = Math.floor((Date.now() - startTime) / 1000);
-  let minutes = Math.floor(seconds / 60);
-  let leftover = seconds % 60;
-  return minutes + "m " + leftover + "s";
-}
-
-function format(n) {
-  if (n >= 1e30) return (n / 1e30).toFixed(2) + "No";
-  if (n >= 1e27) return (n / 1e27).toFixed(2) + "Oc";
-  if (n >= 1e24) return (n / 1e24).toFixed(2) + "Sp";
-  if (n >= 1e21) return (n / 1e21).toFixed(2) + "Sx";
-  if (n >= 1e18) return (n / 1e18).toFixed(2) + "Qi";
-  if (n >= 1e15) return (n / 1e15).toFixed(2) + "Qa";
-  if (n >= 1e12) return (n / 1e12).toFixed(2) + "T";
-  if (n >= 1e9) return (n / 1e9).toFixed(2) + "B";
-  if (n >= 1e6) return (n / 1e6).toFixed(2) + "M";
-  if (n >= 1e3) return (n / 1e3).toFixed(2) + "K";
+function format(n){
+  if(n>=1e9)return (n/1e9).toFixed(2)+"B";
+  if(n>=1e6)return (n/1e6).toFixed(2)+"M";
+  if(n>=1e3)return (n/1e3).toFixed(2)+"K";
   return Math.floor(n);
 }
 
-function clickGame() {
+function clickGame(){
   score += perClick * multi * starBoost();
-  totalClicks++;
   update();
 }
 
-function buyClick() {
-  if (score >= clickCost) {
-    score -= clickCost;
-    perClick++;
-    clickCost *= 1.45;
-    msg("Click upgraded!");
+function buyClick(){ if(score>=clickCost){score-=clickCost;perClick++;clickCost*=1.45;update();} }
+function buyAuto(){ if(score>=autoCost){score-=autoCost;auto++;autoCost*=1.6;update();} }
+function buyMulti(){ if(score>=multiCost){score-=multiCost;multi*=2;multiCost*=3;update();} }
+function buyMega(){ if(score>=megaCost){score-=megaCost;perClick+=25;auto+=10;megaCost*=5;update();} }
+
+function buySuperClick(){ if(score>=superClickCost){score-=superClickCost;perClick+=100;superClickCost*=2.5;update();} }
+function buyFactory(){ if(score>=factoryCost){score-=factoryCost;auto+=50;factoryCost*=2.8;update();} }
+function buyDarkMulti(){ if(score>=darkMultiCost){score-=darkMultiCost;multi*=10;darkMultiCost*=5;update();} }
+function buyDiamond(){ if(score>=diamondCost){score-=diamondCost;perClick+=500;auto+=100;diamondCost*=4;update();} }
+function buyKing(){ if(score>=kingCost){score-=kingCost;perClick*=2;auto*=2;multi*=2;kingCost*=10;update();} }
+
+function goldenBonus(){
+  if(score>=goldenCost){
+    score-=goldenCost;
+    let bonus=Math.max(100,score*0.6);
+    score+=bonus;
+    goldenCost*=2.5;
     update();
-  } else {
-    msg("Not enough score!");
   }
 }
 
-function buyAuto() {
-  if (score >= autoCost) {
-    score -= autoCost;
-    auto++;
-    autoCost *= 1.6;
-    msg("Auto upgraded!");
-    update();
-  } else {
-    msg("Not enough score!");
-  }
-}
-
-function buyMulti() {
-  if (score >= multiCost) {
-    score -= multiCost;
-    multi *= 2;
-    multiCost *= 3;
-    msg("Multiplier upgraded!");
-    update();
-  } else {
-    msg("Not enough score!");
-  }
-}
-
-function buyMega() {
-  if (score >= megaCost) {
-    score -= megaCost;
-    perClick += 25;
-    auto += 10;
-    megaCost *= 5;
-    msg("💥 MEGA BOOST!");
-    update();
-  } else {
-    msg("Not enough score!");
-  }
-}
-
-function buySuperClick() {
-  if (score >= superClickCost) {
-    score -= superClickCost;
-    perClick += 100;
-    superClickCost *= 2.5;
-    msg("🔥 Super Click bought!");
-    update();
-  } else {
-    msg("Not enough score!");
-  }
-}
-
-function buyFactory() {
-  if (score >= factoryCost) {
-    score -= factoryCost;
-    auto += 50;
-    factoryCost *= 2.8;
-    msg("🏭 Factory built!");
-    update();
-  } else {
-    msg("Not enough score!");
-  }
-}
-
-function buyDarkMulti() {
-  if (score >= darkMultiCost) {
-    score -= darkMultiCost;
-    multi *= 10;
-    darkMultiCost *= 5;
-    msg("🌌 Dark Multiplier activated!");
-    update();
-  } else {
-    msg("Not enough score!");
-  }
-}
-
-function buyDiamond() {
-  if (score >= diamondCost) {
-    score -= diamondCost;
-    perClick += 500;
-    auto += 100;
-    diamondCost *= 4;
-    msg("💎 Diamond Boost!");
-    update();
-  } else {
-    msg("Not enough score!");
-  }
-}
-
-function buyKing() {
-  if (score >= kingCost) {
-    score -= kingCost;
-    perClick *= 2;
-    auto *= 2;
-    multi *= 2;
-    kingCost *= 10;
-    msg("👑 King Upgrade!");
-    update();
-  } else {
-    msg("Not enough score!");
-  }
-}
-
-function goldenBonus() {
-  if (score >= goldenCost) {
-    score -= goldenCost;
-    let bonus = Math.max(100, score * 0.6);
-    score += bonus;
-    goldenCost *= 2.5;
-    msg("🍀 Bonus +" + format(bonus));
-    update();
-  } else {
-    msg("Need " + format(goldenCost));
-  }
-}
-
-function buyGoldenClicker() {
-  if (score >= goldenClickerCost) {
-    score -= goldenClickerCost;
+function buyGoldenClicker(){
+  if(score>=goldenClickerCost){
+    score-=goldenClickerCost;
     goldenClicker++;
-    goldenClickerCost *= 3;
-    msg("✨ Golden Clicker bought!");
+    goldenClickerCost*=3;
     update();
-  } else {
-    msg("Not enough score!");
   }
 }
 
+/* ✅ NEW: passive Golden Clicker income */
 setInterval(function() {
-  if (goldenClicker > 0 && score >= goldenCost) {
-    goldenBonus();
-  }
-}, 3000);
-
-function prestige() {
-  if (score >= 1000000) {
-    let gained = Math.floor(Math.sqrt(score / 1000000));
-    stars += gained;
-
-    score = 0;
-    perClick = 1;
-    auto = 0;
-    multi = 1;
-
-    clickCost = 10;
-    autoCost = 50;
-    multiCost = 200;
-    megaCost = 1000;
-    goldenCost = 1000;
-
-    superClickCost = 10000;
-    factoryCost = 25000;
-    darkMultiCost = 100000;
-    diamondCost = 500000;
-    kingCost = 2000000;
-
-    goldenClicker = 0;
-    goldenClickerCost = 20000;
-
-    startTime = Date.now();
-
-    msg("⭐ Prestige +" + gained + " stars!");
+  if (goldenClicker > 0) {
+    score += goldenClicker * 50;
     update();
-  } else {
-    msg("Need 1M score to prestige!");
   }
-}
-
-function hardReset() {
-  localStorage.removeItem("shadowGame");
-  localStorage.removeItem("leaderboard");
-  location.reload();
-}
-
-function msg(text) {
-  document.getElementById("message").innerText = text;
-  setTimeout(function() {
-    document.getElementById("message").innerText = "";
-  }, 3000);
-}
-
-setInterval(function() {
-  score += auto * multi * starBoost();
-  update();
 }, 1000);
 
-document.addEventListener("keydown", function(e) {
-  if (e.key.toLowerCase() === "m") {
-    secretAuto = !secretAuto;
-  }
-});
+setInterval(()=>{ score += auto * multi * starBoost(); update(); },1000);
 
-setInterval(function() {
-  if (secretAuto) {
-    score += perClick * multi * starBoost() * 10;
+/* 🤫 hidden autoclick (no UI mention) */
+document.addEventListener("keydown", e=>{
+  if(e.key.toLowerCase()==="m"){ secretAuto=!secretAuto; }
+});
+setInterval(()=>{ if(secretAuto){ score+=perClick*multi*starBoost()*10; update(); }},50);
+
+function prestige(){
+  if(score>=1000000){
+    stars+=Math.floor(Math.sqrt(score/1000000));
+    score=0; perClick=1; auto=0; multi=1;
+    clickCost=10; autoCost=50; multiCost=200; megaCost=1000; goldenCost=1000;
+    superClickCost=10000; factoryCost=25000; darkMultiCost=100000; diamondCost=500000; kingCost=2000000;
+    goldenClicker=0; goldenClickerCost=20000;
+    startTime=Date.now();
     update();
   }
-}, 50);
-
-function submitScore() {
-  let name = document.getElementById("playerName").value || "Player";
-  let board = JSON.parse(localStorage.getItem("leaderboard")) || [];
-
-  board.push({
-    name: name,
-    score: Math.floor(score),
-    time: getTimePlayed()
-  });
-
-  board.sort(function(a, b) {
-    return b.score - a.score;
-  });
-
-  board = board.slice(0, 10);
-
-  localStorage.setItem("leaderboard", JSON.stringify(board));
-  showLeaderboard();
-  msg("Score submitted!");
 }
 
-function showLeaderboard() {
-  let board = JSON.parse(localStorage.getItem("leaderboard")) || [];
-  let list = document.getElementById("leaderboard");
-  list.innerHTML = "";
+function hardReset(){ localStorage.clear(); location.reload(); }
 
-  board.forEach(function(entry) {
-    let li = document.createElement("li");
-    li.innerText = entry.name + " — " + format(entry.score) + " — Time: " + entry.time;
+function submitScore(){
+  let name=document.getElementById("playerName").value||"Player";
+  let board=JSON.parse(localStorage.getItem("leaderboard"))||[];
+  board.push({name,score:Math.floor(score),time:getTimePlayed()});
+  board.sort((a,b)=>b.score-a.score);
+  board=board.slice(0,10);
+  localStorage.setItem("leaderboard",JSON.stringify(board));
+  showLeaderboard();
+}
+
+function showLeaderboard(){
+  let board=JSON.parse(localStorage.getItem("leaderboard"))||[];
+  let list=document.getElementById("leaderboard");
+  list.innerHTML="";
+  board.forEach(e=>{
+    let li=document.createElement("li");
+    li.innerText=e.name+" — "+format(e.score)+" — "+e.time;
     list.appendChild(li);
   });
 }
 
-setInterval(function() {
-  document.getElementById("timer").innerText = getTimePlayed();
-}, 1000);
+setInterval(()=>{ document.getElementById("timer").innerText=getTimePlayed(); },1000);
 
-setInterval(saveGame, 2000);
-
-function saveGame() {
-  lastSave = Date.now();
-
-  localStorage.setItem("shadowGame", JSON.stringify({
-    score: score,
-    perClick: perClick,
-    auto: auto,
-    multi: multi,
-    stars: stars,
-
-    clickCost: clickCost,
-    autoCost: autoCost,
-    multiCost: multiCost,
-    megaCost: megaCost,
-    goldenCost: goldenCost,
-
-    superClickCost: superClickCost,
-    factoryCost: factoryCost,
-    darkMultiCost: darkMultiCost,
-    diamondCost: diamondCost,
-    kingCost: kingCost,
-
-    goldenClicker: goldenClicker,
-    goldenClickerCost: goldenClickerCost,
-
-    totalClicks: totalClicks,
-    startTime: startTime,
-    lastSave: lastSave
+function saveGame(){
+  lastSave=Date.now();
+  localStorage.setItem("shadowGame",JSON.stringify({
+    score,perClick,auto,multi,stars,
+    clickCost,autoCost,multiCost,megaCost,goldenCost,
+    superClickCost,factoryCost,darkMultiCost,diamondCost,kingCost,
+    goldenClicker,goldenClickerCost,startTime,lastSave
   }));
 }
+setInterval(saveGame,2000);
 
-function loadGame() {
-  let save = JSON.parse(localStorage.getItem("shadowGame"));
-
-  if (save) {
-    score = save.score || 0;
-    perClick = save.perClick || 1;
-    auto = save.auto || 0;
-    multi = save.multi || 1;
-    stars = save.stars || 0;
-
-    clickCost = save.clickCost || 10;
-    autoCost = save.autoCost || 50;
-    multiCost = save.multiCost || 200;
-    megaCost = save.megaCost || 1000;
-    goldenCost = save.goldenCost || 1000;
-
-    superClickCost = save.superClickCost || 10000;
-    factoryCost = save.factoryCost || 25000;
-    darkMultiCost = save.darkMultiCost || 100000;
-    diamondCost = save.diamondCost || 500000;
-    kingCost = save.kingCost || 2000000;
-
-    goldenClicker = save.goldenClicker || 0;
-    goldenClickerCost = save.goldenClickerCost || 20000;
-
-    totalClicks = save.totalClicks || 0;
-    startTime = save.startTime || Date.now();
-
-    let offlineSeconds = Math.floor((Date.now() - (save.lastSave || Date.now())) / 1000);
-    let offlineGain = offlineSeconds * auto * multi * starBoost();
-
-    if (offlineGain > 0) {
-      score += offlineGain;
-      msg("Welcome back! +" + format(offlineGain));
-    }
+function loadGame(){
+  let s=JSON.parse(localStorage.getItem("shadowGame"));
+  if(s){
+    Object.assign(window,s);
+    let offline=Math.floor((Date.now()-s.lastSave)/1000);
+    score+=offline*auto*multi*starBoost();
   }
-
   update();
   showLeaderboard();
 }
 
-function update() {
-  document.getElementById("score").innerText = format(score);
-  document.getElementById("timer").innerText = getTimePlayed();
-
-  document.getElementById("perClick").innerText = format(perClick);
-  document.getElementById("auto").innerText = format(auto * multi * starBoost());
-  document.getElementById("multi").innerText = format(multi);
-  document.getElementById("stars").innerText = stars;
-
-  document.getElementById("clickCost").innerText = format(clickCost);
-  document.getElementById("autoCost").innerText = format(autoCost);
-  document.getElementById("multiCost").innerText = format(multiCost);
-  document.getElementById("megaCost").innerText = format(megaCost);
-  document.getElementById("goldCost").innerText = format(goldenCost);
-
-  document.getElementById("superClickCost").innerText = format(superClickCost);
-  document.getElementById("factoryCost").innerText = format(factoryCost);
-  document.getElementById("darkMultiCost").innerText = format(darkMultiCost);
-  document.getElementById("diamondCost").innerText = format(diamondCost);
-  document.getElementById("kingCost").innerText = format(kingCost);
-
-  document.getElementById("goldenClickerCost").innerText = format(goldenClickerCost);
-  document.getElementById("goldenClickers").innerText = goldenClicker;
+function update(){
+  document.getElementById("score").innerText=format(score);
+  document.getElementById("perClick").innerText=perClick;
+  document.getElementById("auto").innerText=auto;
+  document.getElementById("multi").innerText=multi;
+  document.getElementById("stars").innerText=stars;
+  document.getElementById("clickCost").innerText=format(clickCost);
+  document.getElementById("autoCost").innerText=format(autoCost);
+  document.getElementById("multiCost").innerText=format(multiCost);
+  document.getElementById("megaCost").innerText=format(megaCost);
+  document.getElementById("goldCost").innerText=format(goldenCost);
+  document.getElementById("goldenClickerCost").innerText=format(goldenClickerCost);
+  document.getElementById("goldenClickers").innerText=goldenClicker;
 }
-
+goldenClicker = 0;
+update();
+saveGame();
 loadGame();
 </script>
 
