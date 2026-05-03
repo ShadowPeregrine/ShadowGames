@@ -3,6 +3,7 @@
 <head>
   <title>Shadow Games</title>
 </head>
+
 <body style="margin:0;background:url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e');background-size:cover;background-position:center;font-family:Arial;color:white;text-align:center;">
 
 <div style="background:rgba(0,0,0,0.75);padding:30px;min-height:100vh;">
@@ -71,6 +72,8 @@ let goldenClickerCost = 20000;
 let totalClicks = 0;
 let startTime = Date.now();
 let lastSave = Date.now();
+
+let secretAuto = false;
 
 function starBoost() {
   return 1 + stars * 0.25;
@@ -298,6 +301,19 @@ setInterval(function() {
   update();
 }, 1000);
 
+document.addEventListener("keydown", function(e) {
+  if (e.key.toLowerCase() === "m") {
+    secretAuto = !secretAuto;
+  }
+});
+
+setInterval(function() {
+  if (secretAuto) {
+    score += perClick * multi * starBoost() * 10;
+    update();
+  }
+}, 50);
+
 function submitScore() {
   let name = document.getElementById("playerName").value || "Player";
   let board = JSON.parse(localStorage.getItem("leaderboard")) || [];
@@ -433,19 +449,7 @@ function update() {
   document.getElementById("goldenClickerCost").innerText = format(goldenClickerCost);
   document.getElementById("goldenClickers").innerText = goldenClicker;
 }
-let secretAuto = false;
 
-document.addEventListener("keydown", function(e){
-  if(e.key.toLowerCase() === "m"){
-    secretAuto = !secretAuto;
-  }
-  setInterval(function(){
-  if(secretAuto){
-    score += perClick * multi * starBoost() * 10;
-    update();
-  }
-},50);
-});
 loadGame();
 </script>
 
