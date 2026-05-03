@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Shadow Platformer</title>
+  <style>
+    body { margin:0; background:#111; color:white; text-align:center; font-family:Arial; }
+    canvas { background:#6ec6ff; display:block; margin:20px auto; border:4px solid white; }
+  </style>
+</head>
+<body>
+
+<h1>Shadow Platformer 🕹️</h1>
+<p>Move: A/D or Arrow Keys | Jump: W / Up / Space</p>
+
+<canvas id="game" width="800" height="400"></canvas>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+let player = {
+  x: 50,
+  y: 300,
+  w: 30,
+  h: 40,
+  vx: 0,
+  vy: 0,
+  speed: 5,
+  jump: 12,
+  grounded: false
+};
+
+let keys = {};
+
+let platforms = [
+  {x:0, y:370, w:800, h:30},
+  {x:180, y:300, w:120, h:20},
+  {x:380, y:240, w:120, h:20},
+  {x:600, y:180, w:120, h:20}
+];
+
+let goal = {x:720, y:130, w:40, h:40};
+
+document.addEventListener("keydown", e => keys[e.key.toLowerCase()] = true);
+document.addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
+
+function collide(a,b){
+  return a.x < b.x+b.w && a.x+a.w > b.x && a.y < b.y+b.h && a.y+a.h > b.y;
+}
+
+function update(){
+  player.vx = 0;
+
+  if(keys["arrowleft"] || keys["a"]) player.vx = -player.speed;
+  if(keys["arrowright"] || keys["d"]) player.vx = player.speed;
+
+  if((keys["arrowup"] || keys["w"] || keys[" "]) && player.grounded){
+    player.vy = -player.jump;
+    player.grounded = false;
+  }
+
+  player.vy += 0.6;
+  player.x += player.vx;
+  player.y += player.vy;
+
+  player.grounded = false;
+
+  for(let p of platforms){
+    if(collide(player,p)){
+      if(player.vy > 0){
+        player.y = p.y - player.h;
+        player.vy = 0;
+        player.grounded = true;
+      }
+    }
+  }
+
+  if(player.y > canvas.height){
+    player.x = 50;
+    player.y = 300;
+    player.vy = 0;
+  }
+
+  if(collide(player,goal)){
+    alert("You win!");
+    player.x = 50;
+    player.y = 300;
+  }
+}
+
+function draw(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  ctx.fillStyle = "green";
+  platforms.forEach(p => ctx.fillRect(p.x,p.y,p.w,p.h));
+
+  ctx.fillStyle = "gold";
+  ctx.fillRect(goal.x,goal.y,goal.w,goal.h);
+
+  ctx.fillStyle = "black";
+  ctx.fillRect(player.x,player.y,player.w,player.h);
+}
+
+function loop(){
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+
+loop();
+</script>
+
+</body>
+</html>
