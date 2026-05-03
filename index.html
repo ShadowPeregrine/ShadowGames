@@ -3,131 +3,190 @@
 <head>
   <title>Shadow Games</title>
 </head>
-<body style="background:black;color:white;text-align:center;font-family:sans-serif;">
+<body style="background:#050510;color:white;text-align:center;font-family:Arial;">
 
 <h1>Shadow Games 🎮</h1>
-
-<button onclick="clickGame()">Click Game</button>
-
-<p>Score: <span id="score">0</span></p>
-<p>Per click: <span id="perClick">1</span></p>
-<p>Auto/sec: <span id="auto">0</span></p>
+<h2>Score: <span id="score">0</span></h2>
+<p>Power: <span id="perClick">1</span> per click</p>
+<p>Auto: <span id="auto">0</span>/sec</p>
 <p>Multiplier: x<span id="multi">1</span></p>
+<p>Prestige Stars: ⭐ <span id="stars">0</span></p>
 
-<br>
+<button style="font-size:25px;padding:20px;" onclick="clickGame()">CLICK</button>
 
-<button onclick="buyClick()">+Click (Cost: <span id="clickCost">10</span>)</button>
-<br><br>
-<button onclick="buyAuto()">+Auto (Cost: <span id="autoCost">50</span>)</button>
-<br><br>
-<button onclick="buyMulti()">x2 Multiplier (Cost: <span id="multiCost">200</span>)</button>
-<br><br>
-<button onclick="buyMega()">💥 Mega Boost (Cost: <span id="megaCost">1000</span>)</button>
+<h2>Shop</h2>
+<button onclick="buyClick()">+ Click Power | Cost: <span id="clickCost">10</span></button><br><br>
+<button onclick="buyAuto()">+ Auto Power | Cost: <span id="autoCost">50</span></button><br><br>
+<button onclick="buyMulti()">x2 Multiplier | Cost: <span id="multiCost">200</span></button><br><br>
+<button onclick="buyMega()">💥 Mega Boost | Cost: <span id="megaCost">1000</span></button><br><br>
+
+<h2>Special</h2>
+<button onclick="goldenBonus()">🍀 Golden Bonus</button><br><br>
+<button onclick="prestige()">⭐ Prestige Reset</button><br><br>
+<button onclick="hardReset()">🗑 Reset Save</button>
+
+<h3 id="message"></h3>
 
 <script>
-let score = 0;
-let perClick = 1;
-let auto = 0;
-let multi = 1;
+let score = 0, perClick = 1, auto = 0, multi = 1, stars = 0;
+let clickCost = 10, autoCost = 50, multiCost = 200, megaCost = 1000;
+let totalClicks = 0;
+let lastSave = Date.now();
 
-let clickCost = 10;
-let autoCost = 50;
-let multiCost = 200;
-let megaCost = 1000;
+function starBoost(){ return 1 + stars * 0.25; }
 
-// FORMAT NUMBERS
 function format(n){
+  if(n>=1e18)return (n/1e18).toFixed(2)+"Qi";
+  if(n>=1e15)return (n/1e15).toFixed(2)+"Qa";
+  if(n>=1e12)return (n/1e12).toFixed(2)+"T";
   if(n>=1e9)return (n/1e9).toFixed(2)+"B";
   if(n>=1e6)return (n/1e6).toFixed(2)+"M";
   if(n>=1e3)return (n/1e3).toFixed(2)+"K";
   return Math.floor(n);
 }
 
-// CLICK
 function clickGame(){
-  score += perClick * multi;
+  score += perClick * multi * starBoost();
+  totalClicks++;
   update();
 }
 
-// BUY UPGRADES
 function buyClick(){
-  if(score>=clickCost){
-    score-=clickCost;
-    perClick+=1;
-    clickCost*=1.4;
+  if(score >= clickCost){
+    score -= clickCost;
+    perClick++;
+    clickCost *= 1.45;
+    msg("Click power upgraded!");
     update();
   }
 }
 
 function buyAuto(){
-  if(score>=autoCost){
-    score-=autoCost;
-    auto+=1;
-    autoCost*=1.6;
+  if(score >= autoCost){
+    score -= autoCost;
+    auto++;
+    autoCost *= 1.6;
+    msg("Auto power upgraded!");
     update();
   }
 }
 
 function buyMulti(){
-  if(score>=multiCost){
-    score-=multiCost;
-    multi*=2;
-    multiCost*=3;
+  if(score >= multiCost){
+    score -= multiCost;
+    multi *= 2;
+    multiCost *= 3;
+    msg("Multiplier upgraded!");
     update();
   }
 }
 
 function buyMega(){
-  if(score>=megaCost){
-    score-=megaCost;
-    perClick+=20;
-    auto+=5;
-    megaCost*=5;
+  if(score >= megaCost){
+    score -= megaCost;
+    perClick += 25;
+    auto += 10;
+    megaCost *= 5;
+    msg("MEGA BOOST!");
     update();
   }
 }
 
-// AUTO INCOME
+function goldenBonus(){
+  let bonus = Math.max(100, score * 0.5);
+  score += bonus;
+  msg("🍀 Golden Bonus +" + format(bonus));
+  update();
+}
+
+function prestige(){
+  if(score >= 1000000){
+    let gained = Math.floor(Math.sqrt(score / 1000000));
+    stars += gained;
+    score = 0;
+    perClick = 1;
+    auto = 0;
+    multi = 1;
+    clickCost = 10;
+    autoCost = 50;
+    multiCost = 200;
+    megaCost = 1000;
+    msg("⭐ Prestige! Gained " + gained + " stars");
+    update();
+  } else {
+    msg("Need 1M score to prestige!");
+  }
+}
+
+function hardReset(){
+  localStorage.removeItem("shadowGame");
+  location.reload();
+}
+
+function msg(text){
+  document.getElementById("message").innerText = text;
+  setTimeout(()=>document.getElementById("message").innerText="",3000);
+}
+
 setInterval(()=>{
-  score += auto * multi;
+  score += auto * multi * starBoost();
   update();
 },1000);
 
-// SAVE GAME
 setInterval(()=>{
-  localStorage.setItem("shadowGame", JSON.stringify({
-    score, perClick, auto, multi,
-    clickCost, autoCost, multiCost, megaCost
-  }));
-},2000);
+  if(Math.random()<0.25){
+    goldenBonus();
+  }
+},15000);
 
-// LOAD GAME
-window.onload = ()=>{
+setInterval(saveGame,2000);
+
+function saveGame(){
+  lastSave = Date.now();
+  localStorage.setItem("shadowGame", JSON.stringify({
+    score, perClick, auto, multi, stars,
+    clickCost, autoCost, multiCost, megaCost,
+    totalClicks, lastSave
+  }));
+}
+
+function loadGame(){
   let save = JSON.parse(localStorage.getItem("shadowGame"));
   if(save){
-    score=save.score||0;
-    perClick=save.perClick||1;
-    auto=save.auto||0;
-    multi=save.multi||1;
-    clickCost=save.clickCost||10;
-    autoCost=save.autoCost||50;
-    multiCost=save.multiCost||200;
-    megaCost=save.megaCost||1000;
+    score = save.score || 0;
+    perClick = save.perClick || 1;
+    auto = save.auto || 0;
+    multi = save.multi || 1;
+    stars = save.stars || 0;
+    clickCost = save.clickCost || 10;
+    autoCost = save.autoCost || 50;
+    multiCost = save.multiCost || 200;
+    megaCost = save.megaCost || 1000;
+    totalClicks = save.totalClicks || 0;
+
+    let offlineSeconds = Math.floor((Date.now() - (save.lastSave || Date.now())) / 1000);
+    let offlineGain = offlineSeconds * auto * multi * starBoost();
+    if(offlineGain > 0){
+      score += offlineGain;
+      msg("Welcome back! Offline gain: " + format(offlineGain));
+    }
   }
   update();
 }
 
-// UPDATE UI
 function update(){
   document.getElementById("score").innerText = format(score);
   document.getElementById("perClick").innerText = format(perClick);
-  document.getElementById("auto").innerText = format(auto);
+  document.getElementById("auto").innerText = format(auto * multi * starBoost());
   document.getElementById("multi").innerText = multi;
+  document.getElementById("stars").innerText = stars;
   document.getElementById("clickCost").innerText = format(clickCost);
   document.getElementById("autoCost").innerText = format(autoCost);
   document.getElementById("multiCost").innerText = format(multiCost);
   document.getElementById("megaCost").innerText = format(megaCost);
 }
+
+loadGame();
 </script>
 
 </body>
