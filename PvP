@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shadow Arena</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#080b16;color:white;text-align:center;font-family:Arial,sans-serif}
+h1{margin:14px 0 4px;font-size:42px}
+p{margin:6px;color:#cbd5e1}
+.hud{display:flex;justify-content:center;gap:16px;flex-wrap:wrap;margin:10px 0;font-size:17px}
+.hud span{color:#facc15;font-weight:bold}
+canvas{display:block;margin:12px auto;border:4px solid white;background:#1e293b;max-width:95vw;box-shadow:0 0 35px #000}
+.shop{max-width:960px;margin:0 auto 14px;padding:10px;border:2px solid #334155;background:#111827;display:none}
+.shop.show{display:block}
+.shop button{margin:5px;padding:10px 12px;border:0;border-radius:6px;background:#facc15;color:#111827;font-weight:bold;cursor:pointer}
+.shop button:hover{background:#fde047}
+</style>
+</head>
+<body>
+
+<h1>Shadow Arena</h1>
+<p>Arrow Keys: Move | Space: Attack | E: Shop | 1-4: Buy | R: Restart</p>
+
+<div class="hud">
+  <div>Wave: <span id="wave">1</span></div>
+  <div>Health: <span id="hp">100</span></div>
+  <div>Coins: <span id="coins">0</span></div>
+  <div>Weapon: <span id="weapon">1</span></div>
+  <div>Armor: <span id="armor">0</span></div>
+  <div>Kills: <span id="kills">0</span></div>
+</div>
+
+<div class="shop" id="shop">
+  <h2>Shop</h2>
+  <p>Press E to close. Buy upgrades with coins.</p>
+  <button onclick="buy('weapon')">1 - Weapon Upgrade: <span id="weaponCost">25</span> coins</button>
+  <button onclick="buy('armor')">2 - Armor Upgrade: <span id="armorCost">30</span> coins</button>
+  <button onclick="buy('health')">3 - Max Health Upgrade: <span id="healthCost">35</span> coins</button>
+  <button onclick="buy('speed')">4 - Speed Upgrade: <span id="speedCost">40</span> coins</button>
+</div>
+
+<canvas id="game" width="960" height="540"></canvas>
+
+<script>
+const canvas=document.getElementById("game");
+const ctx=canvas.getContext("2d");
+
+const waveText=document.getElementById("wave");
+const hpText=document.getElementById("hp");
+const coinsText=document.getElementById("coins");
+const weaponText=document.getElementById("weapon");
+const armorText=document.getElementById("armor");
+const killsText=document.getElementById("kills");
+const shopBox=document.getElementById("shop");
+
+const weaponCostText=document.getElementById("weaponCost");
+const armorCostText=document.getElementById("armorCost");
+const healthCostText=document.getElementById("healthCost");
+const speedCostText=document.getElementById("speedCost");
+
+const keys={};
+const pressed={};
+
+let wave=1;
+let coins=0;
+let kills=0;
+let gameOver=false;
+let shopOpen=false;
+let attackTimer=0;
+let message="Defeat enemies, earn coins, buy gear.";
+let messageTimer=180;
+let shake=0;
+
+const player={
+  x:480,
+  y:270,
+  r:18,
+  hp:100,
+  maxHp:100,
+  speed:4.2,
+  damage:18,
+  weapon:1,
+  armor:0,
+  speedLevel:0,
+  facingX:1,
+  facingY:0
+};
+
+let weaponCost=25;
+let armorCost=30;
+let healthCost=35;
+let speedCost=40;
+
+const enemies=[];
+const coinsOnGround=[];
+const particles=[];
+
+document.addEventListener("keydown",e=>{
+  const k=e.key.toLowerCase();
+  if(!keys[k])pressed[k]=true;
+  keys[k]=true;
+
+  if(["arrowup","arrowdown","arrowleft","arrowright"," "].includes(k)){
+    e.preventDefault();
+  }
+
+  if(k==="e"){
+    shopOpen=!shopOpen;
+    shopBox.classList.toggle("show",shopOpen);
+  }
+
+  if(k==="1")buy("weapon");
+  if(k==="2")buy("armor");
+  if(k==="3")buy("health");
+  if(k==="4")buy("speed");
+  if(k==="r")restart();
+});
+
+document.addEventListener("keyup",e=>{
+  keys[e.key.toLowerCase()]=false;
+});
+
+function restart(){
+  wave=1;
+  coins=0;
+  kills=0;
+  gameOver=false;
+  shopOpen=false;
+  shopBox.classList.remove("show");
+  attackTimer=0;
+  message="Defeat enemies, earn coins, buy gear.";
+  messageTimer=180;
+  shake=0;
+
+  player.x=480;
+  player.y=270;
+  player.hp=100;
+  player.maxHp=100;
+  player.speed=4.2;
+  player.damage=18;
+  player.weapon=1;
+  player.armor=0;
+  player.speedLevel=0;
+  player.facingX=1;
+  player.facingY=0;
+
+  weaponCost=25;
+  armorCost=30;
+  healthCost=35;
+  speedCost=40;
+
+  enemies.length=0;
+  coinsOnGround.length=0;
+  particles.length=0;
+
+  spawnWave();
+}
+
+function show(text,time){
+  message=text;
+  messageTimer=time;
+}
+
+function spawnWave(){
+  enemies.length=0;
+  const count=3+Math.floor(wave*1.25);
+  const boss=wave%5===0;
+
+  for(let i=0;i<count;i++){
+    spawnEnemy(false);
+  }
+
+  if(boss){
+    spawnEnemy(true);
+    show("Boss wave!",140);
+  }else{
+    show("Wave "+wave,100);
+  }
+}
+
+function spawnEnemy(isBoss){
+  let side=Math.floor(Math.random()*4);
+  let x=0,y=0;
+
+  if(side===0){x=Math.random()*canvas.width;y=-30}
+  if(side===1){x=canvas.width+30;y=Math.random()*canvas.height}
+  if(side===2){x=Math.random()*canvas.width;y=canvas.height+30}
+  if(side===3){x=-30;y=Math.random()*canvas.height}
+
+  enemies.push({
+    x:x,
+    y:y,
+    r:isBoss?34:17,
+    hp:isBoss?160+wave*25:45+wave*10,
+    maxHp:isBoss?160+wave*25:45+wave*10,
+    speed:isBoss?1.4+wave*.03:1.9+wave*.04,
+    damage:isBoss?20+wave*2:8+wave,
+    coins:isBoss?70+wave*8:10+wave*2,
+    boss:isBoss,
+    hit:0
+  });
+}
+
+function buy(type){
+  if(type==="weapon"){
+    if(coins>=weaponCost){
+      coins-=weaponCost;
+      player.weapon++;
+      player.damage+=9;
+      weaponCost=Math.floor(weaponCost*1.55);
+      show("Weapon upgraded!",80);
+    }else show("Not enough coins",60);
+  }
+
+  if(type==="armor"){
+    if(coins>=armorCost){
+      coins-=armorCost;
+      player.armor++;
+      armorCost=Math.floor(armorCost*1.6);
+      show("Armor upgraded!",80);
+    }else show("Not enough coins",60);
+  }
+
+  if(type==="health"){
+    if(coins>=healthCost){
+      coins-=healthCost;
+      player.maxHp+=25;
+      player.hp=player.maxHp;
+      healthCost=Math.floor(healthCost*1.55);
+      show("Health upgraded!",80);
+    }else show("Not enough coins",60);
+  }
+
+  if(type==="speed"){
+    if(coins>=speedCost){
+      coins-=speedCost;
+      player.speedLevel++;
+      player.speed+=0.35;
+      speedCost=Math.floor(speedCost*1.7);
+      show("Speed upgraded!",80);
+    }else show("Not enough coins",60);
+  }
+}
+
+function distance(a,b){
+  const dx=a.x-b.x;
+  const dy=a.y-b.y;
+  return Math.sqrt(dx*dx+dy*dy);
+}
+
+function burst(x,y,color,amount){
+  for(let i=0;i<amount;i++){
+    particles.push({
+      x:x,
+      y:y,
+      vx:(Math.random()-.5)*6,
+      vy:(Math.random()-.5)*6,
+      life:25+Math.random()*25,
+      color:color
+    });
+  }
+}
+
+function attack(){
+  if(attackTimer>0)return;
+
+  attackTimer=22;
+
+  const reach=68;
+  const attackPoint={
+    x:player.x+player.facingX*45,
+    y:player.y+player.facingY*45
+  };
+
+  let hitSomething=false;
+
+  for(const e of enemies){
+    const dx=e.x-attackPoint.x;
+    const dy=e.y-attackPoint.y;
+    const d=Math.sqrt(dx*dx+dy*dy);
+
+    if(d<reach){
+      e.hp-=player.damage;
+      e.hit=8;
+      hitSomething=true;
+      burst(e.x,e.y,"#facc15",8);
+    }
+  }
+
+  if(hitSomething){
+    shake=5;
+  }
+}
+
+function updatePlayer(){
+  let mx=0,my=0;
+
+  if(keys.arrowleft)mx--;
+  if(keys.arrowright)mx++;
+  if(keys.arrowup)my--;
+  if(keys.arrowdown)my++;
+
+  if(mx!==0||my!==0){
+    const len=Math.sqrt(mx*mx+my*my);
+    mx/=len;
+    my/=len;
+    player.facingX=mx;
+    player.facingY=my;
+  }
+
+  player.x+=mx*player.speed;
+  player.y+=my*player.speed;
+
+  player.x=Math.max(player.r,Math.min(canvas.width-player.r,player.x));
+  player.y=Math.max(player.r,Math.min(canvas.height-player.r,player.y));
+
+  if(keys[" "]){
+    attack();
+  }
+
+  if(attackTimer>0)attackTimer--;
+}
+
+function updateEnemies(){
+  for(let i=enemies.length-1;i>=0;i--){
+    const e=enemies[i];
+
+    const dx=player.x-e.x;
+    const dy=player.y-e.y;
+    const d=Math.sqrt(dx*dx+dy*dy)||1;
+
+    e.x+=dx/d*e.speed;
+    e.y+=dy/d*e.speed;
+
+    if(e.hit>0)e.hit--;
+
+    if(d<player.r+e.r){
+      const damage=Math.max(1,e.damage-player.armor*3);
+      player.hp-=damage*0.025;
+
+      const push=1.5;
+      player.x+=dx/d*push;
+      player.y+=dy/d*push;
+    }
+
+    if(e.hp<=0){
+      kills++;
+      coinsOnGround.push({
+        x:e.x,
+        y:e.y,
+        value:e.coins,
+        r:e.boss?12:8
+      });
+      burst(e.x,e.y,e.boss?"#a855f7":"#ef4444",e.boss?35:18);
+      enemies.splice(i,1);
+    }
+  }
+
+  if(enemies.length===0&&!gameOver){
+    wave++;
+    spawnWave();
+  }
+}
+
+function updateCoins(){
+  for(let i=coinsOnGround.length-1;i>=0;i--){
+    const c=coinsOnGround[i];
+    const dx=player.x-c.x;
+    const dy=player.y-c.y;
+    const d=Math.sqrt(dx*dx+dy*dy)||1;
+
+    if(d<110){
+      c.x+=dx/d*4;
+      c.y+=dy/d*4;
+    }
+
+    if(d<player.r+c.r){
+      coins+=c.value;
+      burst(c.x,c.y,"#facc15",10);
+      coinsOnGround.splice(i,1);
+    }
+  }
+}
+
+function updateParticles(){
+  for(let i=particles.length-1;i>=0;i--){
+    const p=particles[i];
+    p.x+=p.vx;
+    p.y+=p.vy;
+    p.vx*=0.94;
+    p.vy*=0.94;
+    p.life--;
+
+    if(p.life<=0){
+      particles.splice(i,1);
+    }
+  }
+}
+
+function update(){
+  if(gameOver){
+    if(pressed.r)restart();
+    clearPressed();
+    return;
+  }
+
+  if(!shopOpen){
+    updatePlayer();
+    updateEnemies();
+    updateCoins();
+  }
+
+  updateParticles();
+
+  if(messageTimer>0){
+    messageTimer--;
+    if(messageTimer<=0)message="";
+  }
+
+  if(player.hp<=0){
+    gameOver=true;
+    show("Game Over - Press R to restart",999999);
+  }
+
+  shake*=0.85;
+  updateHud();
+  clearPressed();
+}
+
+function clearPressed(){
+  for(const k in pressed){
+    pressed[k]=false;
+  }
+}
+
+function updateHud(){
+  waveText.textContent=wave;
+  hpText.textContent=Math.max(0,Math.floor(player.hp))+"/"+player.maxHp;
+  coinsText.textContent=coins;
+  weaponText.textContent=player.weapon;
+  armorText.textContent=player.armor;
+  killsText.textContent=kills;
+
+  weaponCostText.textContent=weaponCost;
+  armorCostText.textContent=armorCost;
+  healthCostText.textContent=healthCost;
+  speedCostText.textContent=speedCost;
+}
+
+function rect(x,y,w,h,color){
+  ctx.fillStyle=color;
+  ctx.fillRect(x,y,w,h);
+}
+
+function circle(x,y,r,color){
+  ctx.fillStyle=color;
+  ctx.beginPath();
+  ctx.arc(x,y,r,0,Math.PI*2);
+  ctx.fill();
+}
+
+function drawGrid(){
+  rect(0,0,canvas.width,canvas.height,"#182033");
+
+  ctx.strokeStyle="rgba(255,255,255,.06)";
+  ctx.lineWidth=1;
+
+  for(let x=0;x<canvas.width;x+=48){
+    ctx.beginPath();
+    ctx.moveTo(x,0);
+    ctx.lineTo(x,canvas.height);
+    ctx.stroke();
+  }
+
+  for(let y=0;y<canvas.height;y+=48){
+    ctx.beginPath();
+    ctx.moveTo(0,y);
+    ctx.lineTo(canvas.width,y);
+    ctx.stroke();
+  }
+
+  rect(24,24,canvas.width-48,canvas.height-48,"rgba(15,23,42,.55)");
+}
+
+function drawPlayer(){
+  if(attackTimer>8){
+    ctx.strokeStyle="#facc15";
+    ctx.lineWidth=14;
+    ctx.beginPath();
+    ctx.moveTo(player.x,player.y);
+    ctx.lineTo(player.x+player.facingX*70,player.y+player.facingY*70);
+    ctx.stroke();
+  }
+
+  circle(player.x,player.y,player.r,"#0f172a");
+  circle(player.x+player.facingX*6,player.y+player.facingY*6,6,"#38bdf8");
+
+  const hpW=48;
+  rect(player.x-hpW/2,player.y-player.r-16,hpW,6,"#991b1b");
+  rect(player.x-hpW/2,player.y-player.r-16,hpW*(player.hp/player.maxHp),6,"#22c55e");
+}
+
+function drawEnemies(){
+  for(const e of enemies){
+    circle(e.x,e.y,e.r,e.boss?"#111827":e.hit>0?"#facc15":"#7c3aed");
+
+    if(e.boss){
+      circle(e.x,e.y,18,"#a855f7");
+    }
+
+    const hpW=e.r*2;
+    rect(e.x-hpW/2,e.y-e.r-13,hpW,5,"#7f1d1d");
+    rect(e.x-hpW/2,e.y-e.r-13,hpW*(e.hp/e.maxHp),5,"#ef4444");
+  }
+}
+
+function drawCoins(){
+  for(const c of coinsOnGround){
+    circle(c.x,c.y,c.r,"#facc15");
+    circle(c.x-3,c.y-3,3,"#fff7ad");
+  }
+}
+
+function drawParticles(){
+  for(const p of particles){
+    ctx.globalAlpha=Math.max(0,p.life/50);
+    circle(p.x,p.y,3,p.color);
+    ctx.globalAlpha=1;
+  }
+}
+
+function drawText(){
+  if(message){
+    rect(280,18,400,42,"rgba(2,6,23,.72)");
+    ctx.fillStyle="white";
+    ctx.font="bold 18px Arial";
+    ctx.textAlign="center";
+    ctx.fillText(message,480,45);
+    ctx.textAlign="left";
+  }
+
+  if(shopOpen){
+    rect(0,0,canvas.width,canvas.height,"rgba(2,6,23,.35)");
+    ctx.fillStyle="white";
+    ctx.font="bold 28px Arial";
+    ctx.textAlign="center";
+    ctx.fillText("SHOP OPEN",480,255);
+    ctx.font="18px Arial";
+    ctx.fillText("Press E to return to battle",480,285);
+    ctx.textAlign="left";
+  }
+
+  if(gameOver){
+    rect(0,0,canvas.width,canvas.height,"rgba(2,6,23,.72)");
+    ctx.fillStyle="white";
+    ctx.font="bold 44px Arial";
+    ctx.textAlign="center";
+    ctx.fillText("GAME OVER",480,240);
+    ctx.font="22px Arial";
+    ctx.fillText("Press R to restart",480,280);
+    ctx.textAlign="left";
+  }
+}
+
+function draw(){
+  ctx.save();
+
+  if(shake>1){
+    ctx.translate((Math.random()-.5)*shake,(Math.random()-.5)*shake);
+  }
+
+  drawGrid();
+  drawCoins();
+  drawEnemies();
+  drawPlayer();
+  drawParticles();
+  drawText();
+
+  ctx.restore();
+}
+
+function loop(){
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+
+restart();
+loop();
+</script>
+</body>
+</html>
