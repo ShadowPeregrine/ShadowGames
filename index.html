@@ -1,0 +1,16 @@
+<body style="background:black;color:white;text-align:center;font-family:sans-serif;">
+
+<h1>Shadow Games 🎮</h1>
+
+<button onclick="score++; update()">Click Game</button>
+<p>Score: <span id="score">0</span></p>
+
+<script>
+let score = 0;
+function update() {
+  document.getElementById("score").innerText = score;
+}
+</script>
+
+</body>
+</html>
