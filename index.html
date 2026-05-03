@@ -3,24 +3,38 @@
 <head>
   <title>Shadow Games</title>
 </head>
-<body style="background:#050510;color:white;text-align:center;font-family:Arial;">
+
+<body style="
+margin:0;
+background:url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e');
+background-size:cover;
+background-position:center;
+font-family:Arial;
+color:white;
+text-align:center;
+">
+
+<div style="background:rgba(0,0,0,0.7);padding:30px;min-height:100vh;">
 
 <h1>Shadow Games 🎮</h1>
+
 <h2>Score: <span id="score">0</span></h2>
 <p>Power: <span id="perClick">1</span> per click</p>
 <p>Auto: <span id="auto">0</span>/sec</p>
 <p>Multiplier: x<span id="multi">1</span></p>
 <p>Prestige Stars: ⭐ <span id="stars">0</span></p>
 
-<button style="font-size:25px;padding:20px;" onclick="clickGame()">CLICK</button>
+<button style="font-size:25px;padding:20px;border-radius:10px;" onclick="clickGame()">CLICK</button>
 
 <h2>Shop</h2>
+
 <button onclick="buyClick()">+ Click Power | Cost: <span id="clickCost">10</span></button><br><br>
 <button onclick="buyAuto()">+ Auto Power | Cost: <span id="autoCost">50</span></button><br><br>
 <button onclick="buyMulti()">x2 Multiplier | Cost: <span id="multiCost">200</span></button><br><br>
 <button onclick="buyMega()">💥 Mega Boost | Cost: <span id="megaCost">1000</span></button><br><br>
 
 <h2>Special</h2>
+
 <button onclick="goldenBonus()">🍀 Golden Bonus</button><br><br>
 <button onclick="prestige()">⭐ Prestige Reset</button><br><br>
 <button onclick="hardReset()">🗑 Reset Save</button>
@@ -95,7 +109,7 @@ function buyMega(){
 function goldenBonus(){
   let bonus = Math.max(100, score * 0.5);
   score += bonus;
-  msg("🍀 Golden Bonus +" + format(bonus));
+  msg("🍀 Bonus +" + format(bonus));
   update();
 }
 
@@ -111,10 +125,10 @@ function prestige(){
     autoCost = 50;
     multiCost = 200;
     megaCost = 1000;
-    msg("⭐ Prestige! Gained " + gained + " stars");
+    msg("⭐ Prestige! +" + gained + " stars");
     update();
   } else {
-    msg("Need 1M score to prestige!");
+    msg("Need 1M to prestige!");
   }
 }
 
@@ -168,7 +182,7 @@ function loadGame(){
     let offlineGain = offlineSeconds * auto * multi * starBoost();
     if(offlineGain > 0){
       score += offlineGain;
-      msg("Welcome back! Offline gain: " + format(offlineGain));
+      msg("Welcome back! +" + format(offlineGain));
     }
   }
   update();
@@ -189,5 +203,6 @@ function update(){
 loadGame();
 </script>
 
+</div>
 </body>
 </html>
