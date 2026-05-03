@@ -57,8 +57,6 @@ text-align:center;
 <button onclick="submitScore()">Submit Score</button>
 <ol id="leaderboard"></ol>
 
-<p style="font-size:12px;">Secret: press M to toggle hidden mega autoclick.</p>
-
 <script>
 let score = 0, perClick = 1, auto = 0, multi = 1, stars = 0;
 let clickCost = 10, autoCost = 50, multiCost = 200, megaCost = 1000;
@@ -273,7 +271,7 @@ setInterval(()=>{
 document.addEventListener("keydown", function(e){
   if(e.key.toLowerCase() === "m"){
     megaAuto = !megaAuto;
-    msg("⚡ SECRET AUTOCLICK " + (megaAuto ? "ON" : "OFF"));
+    msg("Mode " + (megaAuto ? "ON" : "OFF"));
   }
 });
 
