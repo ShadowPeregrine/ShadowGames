@@ -3,16 +3,32 @@
 <head>
   <title>Shadow Platformer</title>
   <style>
-    body { margin:0; background:#111; color:white; text-align:center; font-family:Arial; }
-    canvas { background:#6ec6ff; display:block; margin:20px auto; border:4px solid white; }
+    body {
+      margin: 0;
+      background: #0b1020;
+      color: white;
+      text-align: center;
+      font-family: Arial, sans-serif;
+    }
+
+    h1 {
+      margin-bottom: 5px;
+    }
+
+    canvas {
+      background: #6ec6ff;
+      display: block;
+      margin: 20px auto;
+      border: 4px solid white;
+      max-width: 95vw;
+    }
   </style>
 </head>
 <body>
 
-<h1>Shadow Platformer 🕹️</h1>
-<p>Move: A/D or Arrow Keys | Jump: W / Up / Space</p>
-<h2>Level: <span id="level">1</span> / 50</h2>
-<p id="info"></p>
+<h1>Shadow Platformer</h1>
+<p>Move: A/D or Arrow Keys | Jump: W / Up / Space | Restart: R</p>
+<h2>Level: <span id="level">1</span> / 50 | Deaths: <span id="deaths">0</span></h2>
 
 <canvas id="game" width="800" height="400"></canvas>
 
@@ -20,79 +36,138 @@
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 const levelText = document.getElementById("level");
-const info = document.getElementById("info");
+const deathsText = document.getElementById("deaths");
 
 let keys = {};
 let level = 0;
-let checkpoint = {x:50,y:300};
+let deaths = 0;
+let checkpoint = { x: 50, y: 300 };
 
 let player = {
-  x:50, y:300, w:30, h:40,
-  vx:0, vy:0,
-  speed:5, jump:12,
-  grounded:false
+  x: 50,
+  y: 300,
+  w: 30,
+  h: 40,
+  vx: 0,
+  vy: 0,
+  speed: 5,
+  jump: 12,
+  grounded: false
 };
 
 const levels = [];
 
-for(let i=1;i<=50;i++){
+for (let i = 1; i <= 50; i++) {
   levels.push({
-    platforms:[
-      {x:0,y:370,w:150,h:30},
-      {x:180,y:320-(i%3)*10,w:90,h:20},
-      {x:350,y:280-(i%4)*10,w:90,h:20},
-      {x:520,y:240-(i%5)*10,w:90,h:20},
-      {x:680,y:200-(i%6)*8,w:90,h:20}
+    platforms: [
+      { x: 0, y: 370, w: 150, h: 30 },
+      { x: 180, y: 320 - (i % 3) * 10, w: 90, h: 20 },
+      { x: 350, y: 280 - (i % 4) * 10, w: 90, h: 20 },
+      { x: 520, y: 240 - (i % 5) * 10, w: 90, h: 20 },
+      { x: 680, y: 200 - (i % 6) * 8, w: 90, h: 20 }
     ],
-    moving:[
-      {x:250,y:250,w:80,h:15,dir:1,range:100,speed:1+i*0.05}
+    moving: [
+      {
+        x: 250,
+        y: 250,
+        w: 80,
+        h: 15,
+        dir: 1,
+        min: 150,
+        max: 350,
+        speed: 1 + i * 0.05
+      }
     ],
-    enemies:[
-      {x:300,y:350,w:30,h:20,dir:1,speed:1+i*0.05}
+    enemies: [
+      {
+        x: 300,
+        y: 350,
+        w: 30,
+        h: 20,
+        dir: 1,
+        min: 200,
+        max: 600,
+        speed: 1 + i * 0.05
+      }
     ],
-    spikes:[
-      {x:150,y:350,w:60,h:20},
-      {x:400,y:350,w:60,h:20}
+    spikes: [
+      { x: 150, y: 350, w: 60, h: 20 },
+      { x: 400, y: 350, w: 60, h: 20 }
     ],
-    checkpoint:{x:600,y:330,w:20,h:40},
-    goal:{x:740,y:140,w:40,h:40},
-    boss: i===50
+    checkpoint: { x: 600, y: 330, w: 20, h: 40 },
+    goal: { x: 740, y: 140, w: 40, h: 40 },
+    boss: i === 50
   });
 }
 
-document.addEventListener("keydown", e => keys[e.key.toLowerCase()] = true);
-document.addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
+document.addEventListener("keydown", function(e) {
+  keys[e.key.toLowerCase()] = true;
 
-function collide(a,b){
-  return a.x < b.x+b.w && a.x+a.w > b.x && a.y < b.y+b.h && a.y+a.h > b.y;
+  if (e.key.toLowerCase() === "r") {
+    restartLevel();
+  }
+});
+
+document.addEventListener("keyup", function(e) {
+  keys[e.key.toLowerCase()] = false;
+});
+
+function collide(a, b) {
+  return (
+    a.x < b.x + b.w &&
+    a.x + a.w > b.x &&
+    a.y < b.y + b.h &&
+    a.y + a.h > b.y
+  );
 }
 
-function resetPlayer(){
+function resetPlayer() {
   player.x = checkpoint.x;
   player.y = checkpoint.y;
   player.vx = 0;
   player.vy = 0;
 }
 
-function nextLevel(){
-  level++;
-  if(level>=50){
-    alert("👑 You defeated the boss and beat all 50 levels!");
-    level=0;
-  }
-  checkpoint = {x:50,y:300};
+function restartLevel() {
+  checkpoint = { x: 50, y: 300 };
   resetPlayer();
-  levelText.innerText = level+1;
 }
 
-function update(){
-  let data = levels[level];
+function die() {
+  deaths++;
+  deathsText.innerText = deaths;
+  resetPlayer();
+}
+
+function nextLevel() {
+  level++;
+
+  if (level >= 50) {
+    alert("You beat all 50 levels!");
+    level = 0;
+    deaths = 0;
+    deathsText.innerText = deaths;
+  }
+
+  checkpoint = { x: 50, y: 300 };
+  resetPlayer();
+  levelText.innerText = level + 1;
+}
+
+function update() {
+  const data = levels[level];
 
   player.vx = 0;
-  if(keys["a"]||keys["arrowleft"]) player.vx = -player.speed;
-  if(keys["d"]||keys["arrowright"]) player.vx = player.speed;
 
-  if((keys["w"]||keys["arrowup"]||keys[" "]) && player.grounded){
+  if (keys["a"] || keys["arrowleft"]) {
+    player.vx = -player.speed;
+  }
+
+  if (keys["d"] || keys["arrowright"]) {
+    player.vx = player.speed;
+  }
+
+  if ((keys["w"] || keys["arrowup"] || keys[" "]) && player.grounded) {
     player.vy = -player.jump;
     player.grounded = false;
   }
@@ -103,96 +178,134 @@ function update(){
 
   player.grounded = false;
 
-  for(let p of data.platforms){
-    if(collide(player,p)){
-      if(player.vy>0){
-        player.y = p.y-player.h;
+  for (let p of data.platforms) {
+    if (collide(player, p)) {
+      if (player.vy > 0) {
+        player.y = p.y - player.h;
         player.vy = 0;
         player.grounded = true;
       }
     }
   }
 
-  // moving platforms
-  data.moving.forEach(p=>{
-    p.x += p.speed*p.dir;
-    if(p.x<150 || p.x>150+p.range) p.dir*=-1;
+  for (let p of data.moving) {
+    p.x += p.speed * p.dir;
 
-    if(collide(player,p)){
-      player.y = p.y-player.h;
-      player.vy = 0;
-      player.grounded = true;
-      player.x += p.speed*p.dir;
+    if (p.x < p.min || p.x > p.max) {
+      p.dir *= -1;
     }
-  });
 
-  // enemies
-  data.enemies.forEach(e=>{
-    e.x += e.speed*e.dir;
-    if(e.x<200||e.x>600) e.dir*=-1;
-
-    if(collide(player,e)){
-      resetPlayer();
+    if (collide(player, p)) {
+      if (player.vy >= 0) {
+        player.y = p.y - player.h;
+        player.vy = 0;
+        player.grounded = true;
+        player.x += p.speed * p.dir;
+      }
     }
-  });
-
-  // spikes
-  data.spikes.forEach(s=>{
-    if(collide(player,s)){
-      resetPlayer();
-    }
-  });
-
-  // checkpoint
-  if(collide(player,data.checkpoint)){
-    checkpoint.x = data.checkpoint.x;
-    checkpoint.y = data.checkpoint.y;
-    info.innerText = "Checkpoint!";
   }
 
-  // goal
-  if(collide(player,data.goal)){
+  for (let e of data.enemies) {
+    e.x += e.speed * e.dir;
+
+    if (e.x < e.min || e.x > e.max) {
+      e.dir *= -1;
+    }
+
+    if (collide(player, e)) {
+      die();
+    }
+  }
+
+  for (let s of data.spikes) {
+    if (collide(player, s)) {
+      die();
+    }
+  }
+
+  if (collide(player, data.checkpoint)) {
+    checkpoint = {
+      x: data.checkpoint.x,
+      y: data.checkpoint.y - player.h
+    };
+  }
+
+  if (collide(player, data.goal)) {
     nextLevel();
   }
 
-  if(player.y>400){
-    resetPlayer();
-  }
-
-  if(data.boss){
-    info.innerText = "👑 BOSS LEVEL";
-  } else {
-    info.innerText = "";
+  if (player.y > canvas.height) {
+    die();
   }
 }
 
-function draw(){
-  let data = levels[level];
-  ctx.clearRect(0,0,800,400);
+function drawSpikes(s) {
+  ctx.fillStyle = "red";
 
-  ctx.fillStyle="green";
-  data.platforms.forEach(p=>ctx.fillRect(p.x,p.y,p.w,p.h));
+  const count = Math.max(2, Math.floor(s.w / 15));
+  const toothWidth = s.w / count;
 
-  ctx.fillStyle="brown";
-  data.moving.forEach(p=>ctx.fillRect(p.x,p.y,p.w,p.h));
+  for (let i = 0; i < count; i++) {
+    const x = s.x + i * toothWidth;
 
-  ctx.fillStyle="red";
-  data.spikes.forEach(s=>ctx.fillRect(s.x,s.y,s.w,s.h));
-
-  ctx.fillStyle="purple";
-  data.enemies.forEach(e=>ctx.fillRect(e.x,e.y,e.w,e.h));
-
-  ctx.fillStyle="blue";
-  ctx.fillRect(data.checkpoint.x,data.checkpoint.y,data.checkpoint.w,data.checkpoint.h);
-
-  ctx.fillStyle="gold";
-  ctx.fillRect(data.goal.x,data.goal.y,data.goal.w,data.goal.h);
-
-  ctx.fillStyle="black";
-  ctx.fillRect(player.x,player.y,player.w,player.h);
+    ctx.beginPath();
+    ctx.moveTo(x, s.y + s.h);
+    ctx.lineTo(x + toothWidth / 2, s.y);
+    ctx.lineTo(x + toothWidth, s.y + s.h);
+    ctx.closePath();
+    ctx.fill();
+  }
 }
 
-function loop(){
+function draw() {
+  const data = levels[level];
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  ctx.fillStyle = "#6ec6ff";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ctx.fillStyle = "green";
+  for (let p of data.platforms) {
+    ctx.fillRect(p.x, p.y, p.w, p.h);
+  }
+
+  ctx.fillStyle = "brown";
+  for (let p of data.moving) {
+    ctx.fillRect(p.x, p.y, p.w, p.h);
+  }
+
+  for (let s of data.spikes) {
+    drawSpikes(s);
+  }
+
+  ctx.fillStyle = data.boss ? "black" : "purple";
+  for (let e of data.enemies) {
+    ctx.fillRect(e.x, e.y, e.w, e.h);
+  }
+
+  ctx.fillStyle = "blue";
+  ctx.fillRect(
+    data.checkpoint.x,
+    data.checkpoint.y,
+    data.checkpoint.w,
+    data.checkpoint.h
+  );
+
+  ctx.fillStyle = "gold";
+  ctx.fillRect(data.goal.x, data.goal.y, data.goal.w, data.goal.h);
+
+  ctx.fillStyle = "black";
+  ctx.fillRect(player.x, player.y, player.w, player.h);
+
+  if (data.boss) {
+    ctx.fillStyle = "white";
+    ctx.font = "24px Arial";
+    ctx.fillText("BOSS LEVEL", 320, 50);
+  }
+}
+
+function loop() {
   update();
   draw();
   requestAnimationFrame(loop);
