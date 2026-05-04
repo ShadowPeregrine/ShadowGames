@@ -61,10 +61,10 @@ const armorCostText=document.getElementById("armorCost");
 const healthCostText=document.getElementById("healthCost");
 const speedCostText=document.getElementById("speedCost");
 
-document.getElementById("buyWeapon").onclick=()=>buy("weapon");
-document.getElementById("buyArmor").onclick=()=>buy("armor");
-document.getElementById("buyHealth").onclick=()=>buy("health");
-document.getElementById("buySpeed").onclick=()=>buy("speed");
+document.getElementById("buyWeapon").onclick=function(){buy("weapon")};
+document.getElementById("buyArmor").onclick=function(){buy("armor")};
+document.getElementById("buyHealth").onclick=function(){buy("health")};
+document.getElementById("buySpeed").onclick=function(){buy("speed")};
 
 const keys={};
 const pressed={};
@@ -105,7 +105,7 @@ const obstacles=[
   {x:430,y:410,w:100,h:35}
 ];
 
-document.addEventListener("keydown",e=>{
+document.addEventListener("keydown",function(e){
   const k=e.key.toLowerCase();
   if(!keys[k])pressed[k]=true;
   keys[k]=true;
@@ -127,7 +127,7 @@ document.addEventListener("keydown",e=>{
   if(k==="r")restartKeepUpgrades();
 });
 
-document.addEventListener("keyup",e=>{
+document.addEventListener("keyup",function(e){
   keys[e.key.toLowerCase()]=false;
 });
 
@@ -206,17 +206,18 @@ function show(text,time){
 function spawnWave(){
   enemies.length=0;
   const count=3+Math.floor(wave*1.25);
-  const boss=wave%5===0;
+  const bossWave=wave%5===0;
 
   for(let i=0;i<count;i++)spawnEnemy(false);
-  if(boss)spawnEnemy(true);
+  if(bossWave)spawnEnemy(true);
 
-  show(boss?"Boss wave!":"Wave "+wave,110);
+  show(bossWave?"Boss wave!":"Wave "+wave,110);
 }
 
 function spawnEnemy(isBoss){
   const side=Math.floor(Math.random()*4);
-  let x=0,y=0;
+  let x=0;
+  let y=0;
 
   if(side===0){x=Math.random()*canvas.width;y=-35}
   if(side===1){x=canvas.width+35;y=Math.random()*canvas.height}
@@ -227,14 +228,19 @@ function spawnEnemy(isBoss){
   const tank=!isBoss&&wave>=7&&Math.random()<0.22;
 
   enemies.push({
-    x,y,
+    x:x,
+    y:y,
     r:isBoss?36:tank?23:fast?14:17,
     hp:isBoss?180+wave*28:tank?90+wave*14:fast?35+wave*8:48+wave*10,
     maxHp:isBoss?180+wave*28:tank?90+wave*14:fast?35+wave*8:48+wave*10,
     speed:isBoss?1.45+wave*.03:fast?2.9+wave*.035:tank?1.25+wave*.02:1.9+wave*.04,
     damage:isBoss?20+wave*2:tank?13+wave:fast?7+wave:8+wave,
     coins:isBoss?80+wave*9:tank?18+wave*3:fast?13+wave*2:10+wave*2,
-    boss,fast,tank,hit:0,attackWait:0
+    boss:isBoss,
+    fast:fast,
+    tank:tank,
+    hit:0,
+    attackWait:0
   });
 }
 
@@ -281,24 +287,26 @@ function buy(type){
 }
 
 function dist(ax,ay,bx,by){
-  const dx=ax-bx,dy=ay-by;
+  const dx=ax-bx;
+  const dy=ay-by;
   return Math.sqrt(dx*dx+dy*dy);
 }
 
 function burst(x,y,color,amount){
   for(let i=0;i<amount;i++){
     particles.push({
-      x,y,
+      x:x,
+      y:y,
       vx:(Math.random()-.5)*6,
       vy:(Math.random()-.5)*6,
       life:25+Math.random()*25,
-      color
+      color:color
     });
   }
 }
 
 function floatingText(x,y,text,color){
-  damageTexts.push({x,y,text,color,life:45});
+  damageTexts.push({x:x,y:y,text:text,color:color,life:45});
 }
 
 function circleRectCollide(cx,cy,r,o){
@@ -368,7 +376,8 @@ function attack(){
 }
 
 function updatePlayer(){
-  let mx=0,my=0;
+  let mx=0;
+  let my=0;
 
   if(keys.arrowleft)mx--;
   if(keys.arrowright)mx++;
