@@ -3,16 +3,16 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Shadow Arena</title>
+<title>Shadow Arena RPG</title>
 <style>
 *{box-sizing:border-box}
-body{margin:0;background:#080b16;color:white;text-align:center;font-family:Arial,sans-serif}
-h1{margin:14px 0 4px;font-size:42px}
+body{margin:0;background:#070b16;color:white;text-align:center;font-family:Arial,sans-serif}
+h1{margin:12px 0 4px;font-size:42px}
 p{margin:6px;color:#cbd5e1}
-.hud{display:flex;justify-content:center;gap:16px;flex-wrap:wrap;margin:10px 0;font-size:17px}
+.hud{display:flex;justify-content:center;gap:14px;flex-wrap:wrap;margin:10px 0;font-size:17px}
 .hud span{color:#facc15;font-weight:bold}
-canvas{display:block;margin:12px auto;border:4px solid white;background:#1e293b;max-width:95vw;box-shadow:0 0 35px #000}
-.shop{max-width:960px;margin:0 auto 14px;padding:10px;border:2px solid #334155;background:#111827;display:none}
+canvas{display:block;margin:12px auto;border:4px solid white;background:#182033;max-width:95vw;box-shadow:0 0 35px #000}
+.shop{max-width:960px;margin:0 auto 12px;padding:10px;border:2px solid #334155;background:#111827;display:none}
 .shop.show{display:block}
 .shop button{margin:5px;padding:10px 12px;border:0;border-radius:6px;background:#facc15;color:#111827;font-weight:bold;cursor:pointer}
 .shop button:hover{background:#fde047}
@@ -20,7 +20,7 @@ canvas{display:block;margin:12px auto;border:4px solid white;background:#1e293b;
 </head>
 <body>
 
-<h1>Shadow Arena</h1>
+<h1>Shadow Arena RPG</h1>
 <p>Arrow Keys: Move | Space: Attack | E: Shop | 1-4: Buy | R: Restart</p>
 
 <div class="hud">
@@ -34,11 +34,11 @@ canvas{display:block;margin:12px auto;border:4px solid white;background:#1e293b;
 
 <div class="shop" id="shop">
   <h2>Shop</h2>
-  <p>Press E to close. Buy upgrades with coins.</p>
-  <button onclick="buy('weapon')">1 - Weapon Upgrade: <span id="weaponCost">25</span> coins</button>
-  <button onclick="buy('armor')">2 - Armor Upgrade: <span id="armorCost">30</span> coins</button>
-  <button onclick="buy('health')">3 - Max Health Upgrade: <span id="healthCost">35</span> coins</button>
-  <button onclick="buy('speed')">4 - Speed Upgrade: <span id="speedCost">40</span> coins</button>
+  <p>Press E to close. You can also press 1, 2, 3, or 4 to buy.</p>
+  <button onclick="buy('weapon')">1 - Upgrade Weapon: <span id="weaponCost">25</span> coins</button>
+  <button onclick="buy('armor')">2 - Upgrade Armor: <span id="armorCost">30</span> coins</button>
+  <button onclick="buy('health')">3 - Upgrade Max Health: <span id="healthCost">35</span> coins</button>
+  <button onclick="buy('speed')">4 - Upgrade Speed: <span id="speedCost">40</span> coins</button>
 </div>
 
 <canvas id="game" width="960" height="540"></canvas>
@@ -69,7 +69,9 @@ let kills=0;
 let gameOver=false;
 let shopOpen=false;
 let attackTimer=0;
-let message="Defeat enemies, earn coins, buy gear.";
+let dashTimer=0;
+let dashCooldown=0;
+let message="Defeat enemies, collect coins, buy upgrades.";
 let messageTimer=180;
 let shake=0;
 
@@ -96,13 +98,20 @@ let speedCost=40;
 const enemies=[];
 const coinsOnGround=[];
 const particles=[];
+const damageTexts=[];
+const obstacles=[
+  {x:170,y:145,w:95,h:40},
+  {x:695,y:355,w:95,h:40},
+  {x:430,y:95,w:100,h:35},
+  {x:430,y:410,w:100,h:35}
+];
 
 document.addEventListener("keydown",e=>{
   const k=e.key.toLowerCase();
   if(!keys[k])pressed[k]=true;
   keys[k]=true;
 
-  if(["arrowup","arrowdown","arrowleft","arrowright"," "].includes(k)){
+  if(["arrowup","arrowdown","arrowleft","arrowright"," ","shift"].includes(k)){
     e.preventDefault();
   }
 
@@ -130,7 +139,9 @@ function restart(){
   shopOpen=false;
   shopBox.classList.remove("show");
   attackTimer=0;
-  message="Defeat enemies, earn coins, buy gear.";
+  dashTimer=0;
+  dashCooldown=0;
+  message="Defeat enemies, collect coins, buy upgrades.";
   messageTimer=180;
   shake=0;
 
@@ -154,6 +165,7 @@ function restart(){
   enemies.length=0;
   coinsOnGround.length=0;
   particles.length=0;
+  damageTexts.length=0;
 
   spawnWave();
 }
@@ -165,7 +177,7 @@ function show(text,time){
 
 function spawnWave(){
   enemies.length=0;
-  const count=3+Math.floor(wave*1.25);
+  const count=3+Math.floor(wave*1.35);
   const boss=wave%5===0;
 
   for(let i=0;i<count;i++){
@@ -184,22 +196,27 @@ function spawnEnemy(isBoss){
   let side=Math.floor(Math.random()*4);
   let x=0,y=0;
 
-  if(side===0){x=Math.random()*canvas.width;y=-30}
-  if(side===1){x=canvas.width+30;y=Math.random()*canvas.height}
-  if(side===2){x=Math.random()*canvas.width;y=canvas.height+30}
-  if(side===3){x=-30;y=Math.random()*canvas.height}
+  if(side===0){x=Math.random()*canvas.width;y=-35}
+  if(side===1){x=canvas.width+35;y=Math.random()*canvas.height}
+  if(side===2){x=Math.random()*canvas.width;y=canvas.height+35}
+  if(side===3){x=-35;y=Math.random()*canvas.height}
+
+  const fast=!isBoss&&wave>=4&&Math.random()<0.25;
+  const tank=!isBoss&&wave>=7&&Math.random()<0.22;
 
   enemies.push({
-    x:x,
-    y:y,
-    r:isBoss?34:17,
-    hp:isBoss?160+wave*25:45+wave*10,
-    maxHp:isBoss?160+wave*25:45+wave*10,
-    speed:isBoss?1.4+wave*.03:1.9+wave*.04,
-    damage:isBoss?20+wave*2:8+wave,
-    coins:isBoss?70+wave*8:10+wave*2,
+    x,y,
+    r:isBoss?36:tank?23:fast?14:17,
+    hp:isBoss?180+wave*28:tank?90+wave*14:fast?35+wave*8:48+wave*10,
+    maxHp:isBoss?180+wave*28:tank?90+wave*14:fast?35+wave*8:48+wave*10,
+    speed:isBoss?1.45+wave*.03:fast?2.9+wave*.035:tank?1.25+wave*.02:1.9+wave*.04,
+    damage:isBoss?20+wave*2:tank?13+wave:fast?7+wave:8+wave,
+    coins:isBoss?80+wave*9:tank?18+wave*3:fast?13+wave*2:10+wave*2,
     boss:isBoss,
-    hit:0
+    fast,
+    tank,
+    hit:0,
+    attackWait:0
   });
 }
 
@@ -208,7 +225,7 @@ function buy(type){
     if(coins>=weaponCost){
       coins-=weaponCost;
       player.weapon++;
-      player.damage+=9;
+      player.damage+=10;
       weaponCost=Math.floor(weaponCost*1.55);
       show("Weapon upgraded!",80);
     }else show("Not enough coins",60);
@@ -226,7 +243,7 @@ function buy(type){
   if(type==="health"){
     if(coins>=healthCost){
       coins-=healthCost;
-      player.maxHp+=25;
+      player.maxHp+=30;
       player.hp=player.maxHp;
       healthCost=Math.floor(healthCost*1.55);
       show("Health upgraded!",80);
@@ -244,54 +261,74 @@ function buy(type){
   }
 }
 
-function distance(a,b){
-  const dx=a.x-b.x;
-  const dy=a.y-b.y;
+function dist(ax,ay,bx,by){
+  const dx=ax-bx;
+  const dy=ay-by;
   return Math.sqrt(dx*dx+dy*dy);
 }
 
 function burst(x,y,color,amount){
   for(let i=0;i<amount;i++){
     particles.push({
-      x:x,
-      y:y,
+      x,y,
       vx:(Math.random()-.5)*6,
       vy:(Math.random()-.5)*6,
       life:25+Math.random()*25,
-      color:color
+      color
     });
+  }
+}
+
+function floatingText(x,y,text,color){
+  damageTexts.push({x,y,text,color,life:45});
+}
+
+function circleRectCollide(cx,cy,r,rect){
+  const closestX=Math.max(rect.x,Math.min(cx,rect.x+rect.w));
+  const closestY=Math.max(rect.y,Math.min(cy,rect.y+rect.h));
+  return dist(cx,cy,closestX,closestY)<r;
+}
+
+function keepOutOfObstacles(obj){
+  for(const o of obstacles){
+    if(circleRectCollide(obj.x,obj.y,obj.r,o)){
+      const left=Math.abs(obj.x-o.x);
+      const right=Math.abs(obj.x-(o.x+o.w));
+      const top=Math.abs(obj.y-o.y);
+      const bottom=Math.abs(obj.y-(o.y+o.h));
+      const min=Math.min(left,right,top,bottom);
+
+      if(min===left)obj.x=o.x-obj.r;
+      else if(min===right)obj.x=o.x+o.w+obj.r;
+      else if(min===top)obj.y=o.y-obj.r;
+      else obj.y=o.y+o.h+obj.r;
+    }
   }
 }
 
 function attack(){
   if(attackTimer>0)return;
 
-  attackTimer=22;
+  attackTimer=20;
 
-  const reach=68;
-  const attackPoint={
-    x:player.x+player.facingX*45,
-    y:player.y+player.facingY*45
-  };
-
-  let hitSomething=false;
+  const reach=72+player.weapon*2;
+  const ax=player.x+player.facingX*48;
+  const ay=player.y+player.facingY*48;
+  let hit=false;
 
   for(const e of enemies){
-    const dx=e.x-attackPoint.x;
-    const dy=e.y-attackPoint.y;
-    const d=Math.sqrt(dx*dx+dy*dy);
-
-    if(d<reach){
-      e.hp-=player.damage;
+    if(dist(e.x,e.y,ax,ay)<reach){
+      const crit=Math.random()<0.12;
+      const dmg=crit?Math.floor(player.damage*1.8):player.damage;
+      e.hp-=dmg;
       e.hit=8;
-      hitSomething=true;
-      burst(e.x,e.y,"#facc15",8);
+      hit=true;
+      floatingText(e.x,e.y-e.r,crit?"CRIT "+dmg:dmg,crit?"#facc15":"#ffffff");
+      burst(e.x,e.y,crit?"#facc15":"#fde68a",crit?14:8);
     }
   }
 
-  if(hitSomething){
-    shake=5;
-  }
+  if(hit)shake=5;
 }
 
 function updatePlayer(){
@@ -310,17 +347,27 @@ function updatePlayer(){
     player.facingY=my;
   }
 
-  player.x+=mx*player.speed;
-  player.y+=my*player.speed;
+  if(pressed.shift&&dashCooldown<=0){
+    dashTimer=9;
+    dashCooldown=80;
+    burst(player.x,player.y,"#38bdf8",16);
+  }
+
+  const speed=dashTimer>0?player.speed*3.1:player.speed;
+
+  player.x+=mx*speed;
+  player.y+=my*speed;
 
   player.x=Math.max(player.r,Math.min(canvas.width-player.r,player.x));
   player.y=Math.max(player.r,Math.min(canvas.height-player.r,player.y));
 
-  if(keys[" "]){
-    attack();
-  }
+  keepOutOfObstacles(player);
+
+  if(keys[" "])attack();
 
   if(attackTimer>0)attackTimer--;
+  if(dashTimer>0)dashTimer--;
+  if(dashCooldown>0)dashCooldown--;
 }
 
 function updateEnemies(){
@@ -334,32 +381,31 @@ function updateEnemies(){
     e.x+=dx/d*e.speed;
     e.y+=dy/d*e.speed;
 
+    keepOutOfObstacles(e);
+
     if(e.hit>0)e.hit--;
+    if(e.attackWait>0)e.attackWait--;
 
-    if(d<player.r+e.r){
+    if(d<player.r+e.r+2&&e.attackWait<=0){
       const damage=Math.max(1,e.damage-player.armor*3);
-      player.hp-=damage*0.025;
-
-      const push=1.5;
-      player.x+=dx/d*push;
-      player.y+=dy/d*push;
+      player.hp-=damage;
+      e.attackWait=34;
+      shake=7;
+      floatingText(player.x,player.y-player.r,"-"+damage,"#ef4444");
+      burst(player.x,player.y,"#ef4444",10);
     }
 
     if(e.hp<=0){
       kills++;
-      coinsOnGround.push({
-        x:e.x,
-        y:e.y,
-        value:e.coins,
-        r:e.boss?12:8
-      });
-      burst(e.x,e.y,e.boss?"#a855f7":"#ef4444",e.boss?35:18);
+      coinsOnGround.push({x:e.x,y:e.y,value:e.coins,r:e.boss?12:8});
+      burst(e.x,e.y,e.boss?"#a855f7":e.fast?"#38bdf8":e.tank?"#fb923c":"#ef4444",e.boss?35:18);
       enemies.splice(i,1);
     }
   }
 
   if(enemies.length===0&&!gameOver){
     wave++;
+    player.hp=Math.min(player.maxHp,player.hp+20);
     spawnWave();
   }
 }
@@ -367,13 +413,11 @@ function updateEnemies(){
 function updateCoins(){
   for(let i=coinsOnGround.length-1;i>=0;i--){
     const c=coinsOnGround[i];
-    const dx=player.x-c.x;
-    const dy=player.y-c.y;
-    const d=Math.sqrt(dx*dx+dy*dy)||1;
+    const d=dist(player.x,player.y,c.x,c.y);
 
-    if(d<110){
-      c.x+=dx/d*4;
-      c.y+=dy/d*4;
+    if(d<120){
+      c.x+=(player.x-c.x)/d*4;
+      c.y+=(player.y-c.y)/d*4;
     }
 
     if(d<player.r+c.r){
@@ -384,7 +428,7 @@ function updateCoins(){
   }
 }
 
-function updateParticles(){
+function updateEffects(){
   for(let i=particles.length-1;i>=0;i--){
     const p=particles[i];
     p.x+=p.vx;
@@ -392,10 +436,14 @@ function updateParticles(){
     p.vx*=0.94;
     p.vy*=0.94;
     p.life--;
+    if(p.life<=0)particles.splice(i,1);
+  }
 
-    if(p.life<=0){
-      particles.splice(i,1);
-    }
+  for(let i=damageTexts.length-1;i>=0;i--){
+    const t=damageTexts[i];
+    t.y-=0.7;
+    t.life--;
+    if(t.life<=0)damageTexts.splice(i,1);
   }
 }
 
@@ -412,7 +460,7 @@ function update(){
     updateCoins();
   }
 
-  updateParticles();
+  updateEffects();
 
   if(messageTimer>0){
     messageTimer--;
@@ -430,9 +478,7 @@ function update(){
 }
 
 function clearPressed(){
-  for(const k in pressed){
-    pressed[k]=false;
-  }
+  for(const k in pressed)pressed[k]=false;
 }
 
 function updateHud(){
@@ -442,24 +488,14 @@ function updateHud(){
   weaponText.textContent=player.weapon;
   armorText.textContent=player.armor;
   killsText.textContent=kills;
-
   weaponCostText.textContent=weaponCost;
   armorCostText.textContent=armorCost;
   healthCostText.textContent=healthCost;
   speedCostText.textContent=speedCost;
 }
 
-function rect(x,y,w,h,color){
-  ctx.fillStyle=color;
-  ctx.fillRect(x,y,w,h);
-}
-
-function circle(x,y,r,color){
-  ctx.fillStyle=color;
-  ctx.beginPath();
-  ctx.arc(x,y,r,0,Math.PI*2);
-  ctx.fill();
-}
+function rect(x,y,w,h,color){ctx.fillStyle=color;ctx.fillRect(x,y,w,h)}
+function circle(x,y,r,color){ctx.fillStyle=color;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill()}
 
 function drawGrid(){
   rect(0,0,canvas.width,canvas.height,"#182033");
@@ -482,29 +518,42 @@ function drawGrid(){
   }
 
   rect(24,24,canvas.width-48,canvas.height-48,"rgba(15,23,42,.55)");
+
+  for(const o of obstacles){
+    rect(o.x,o.y,o.w,o.h,"#334155");
+    rect(o.x,o.y,o.w,6,"#64748b");
+  }
 }
 
 function drawPlayer(){
   if(attackTimer>8){
     ctx.strokeStyle="#facc15";
     ctx.lineWidth=14;
+    ctx.lineCap="round";
     ctx.beginPath();
     ctx.moveTo(player.x,player.y);
-    ctx.lineTo(player.x+player.facingX*70,player.y+player.facingY*70);
+    ctx.lineTo(player.x+player.facingX*76,player.y+player.facingY*76);
     ctx.stroke();
+    ctx.lineCap="butt";
   }
 
-  circle(player.x,player.y,player.r,"#0f172a");
+  circle(player.x,player.y,player.r,dashTimer>0?"#164e63":"#0f172a");
   circle(player.x+player.facingX*6,player.y+player.facingY*6,6,"#38bdf8");
 
-  const hpW=48;
-  rect(player.x-hpW/2,player.y-player.r-16,hpW,6,"#991b1b");
-  rect(player.x-hpW/2,player.y-player.r-16,hpW*(player.hp/player.maxHp),6,"#22c55e");
+  const hpW=54;
+  rect(player.x-hpW/2,player.y-player.r-18,hpW,6,"#991b1b");
+  rect(player.x-hpW/2,player.y-player.r-18,hpW*(player.hp/player.maxHp),6,"#22c55e");
 }
 
 function drawEnemies(){
   for(const e of enemies){
-    circle(e.x,e.y,e.r,e.boss?"#111827":e.hit>0?"#facc15":"#7c3aed");
+    let color="#7c3aed";
+    if(e.boss)color="#111827";
+    if(e.fast)color="#0891b2";
+    if(e.tank)color="#c2410c";
+    if(e.hit>0)color="#facc15";
+
+    circle(e.x,e.y,e.r,color);
 
     if(e.boss){
       circle(e.x,e.y,18,"#a855f7");
@@ -523,17 +572,27 @@ function drawCoins(){
   }
 }
 
-function drawParticles(){
+function drawEffects(){
   for(const p of particles){
     ctx.globalAlpha=Math.max(0,p.life/50);
     circle(p.x,p.y,3,p.color);
     ctx.globalAlpha=1;
   }
+
+  ctx.font="bold 16px Arial";
+  ctx.textAlign="center";
+  for(const t of damageTexts){
+    ctx.globalAlpha=Math.max(0,t.life/45);
+    ctx.fillStyle=t.color;
+    ctx.fillText(t.text,t.x,t.y);
+    ctx.globalAlpha=1;
+  }
+  ctx.textAlign="left";
 }
 
 function drawText(){
   if(message){
-    rect(280,18,400,42,"rgba(2,6,23,.72)");
+    rect(250,18,460,42,"rgba(2,6,23,.72)");
     ctx.fillStyle="white";
     ctx.font="bold 18px Arial";
     ctx.textAlign="center";
@@ -542,24 +601,24 @@ function drawText(){
   }
 
   if(shopOpen){
-    rect(0,0,canvas.width,canvas.height,"rgba(2,6,23,.35)");
+    rect(0,0,canvas.width,canvas.height,"rgba(2,6,23,.42)");
     ctx.fillStyle="white";
-    ctx.font="bold 28px Arial";
+    ctx.font="bold 34px Arial";
     ctx.textAlign="center";
-    ctx.fillText("SHOP OPEN",480,255);
+    ctx.fillText("SHOP OPEN",480,245);
     ctx.font="18px Arial";
-    ctx.fillText("Press E to return to battle",480,285);
+    ctx.fillText("Press E to return to battle",480,280);
     ctx.textAlign="left";
   }
 
   if(gameOver){
-    rect(0,0,canvas.width,canvas.height,"rgba(2,6,23,.72)");
+    rect(0,0,canvas.width,canvas.height,"rgba(2,6,23,.76)");
     ctx.fillStyle="white";
-    ctx.font="bold 44px Arial";
+    ctx.font="bold 46px Arial";
     ctx.textAlign="center";
     ctx.fillText("GAME OVER",480,240);
     ctx.font="22px Arial";
-    ctx.fillText("Press R to restart",480,280);
+    ctx.fillText("Press R to restart",480,282);
     ctx.textAlign="left";
   }
 }
@@ -575,7 +634,7 @@ function draw(){
   drawCoins();
   drawEnemies();
   drawPlayer();
-  drawParticles();
+  drawEffects();
   drawText();
 
   ctx.restore();
