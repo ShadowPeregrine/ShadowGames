@@ -21,7 +21,8 @@ canvas{display:block;margin:12px auto;border:4px solid white;background:#182033;
 <body>
 
 <h1>Shadow Arena RPG</h1>
-<p>Arrow Keys: Move | Space: Attack | E: Shop | 1-4: Buy | R: Restart</p>
+<p>Arrow Keys: Move | Space: Auto-Attack | E: Shop | 1-4: Buy | Shift: Dash | R: Restart Wave 1</p>
+<p>You keep your coins and upgrades when you restart.</p>
 
 <div class="hud">
   <div>Wave: <span id="wave">1</span></div>
@@ -34,11 +35,11 @@ canvas{display:block;margin:12px auto;border:4px solid white;background:#182033;
 
 <div class="shop" id="shop">
   <h2>Shop</h2>
-  <p>Press E to close. You can also press 1, 2, 3, or 4 to buy.</p>
-  <button onclick="buy('weapon')">1 - Upgrade Weapon: <span id="weaponCost">25</span> coins</button>
-  <button onclick="buy('armor')">2 - Upgrade Armor: <span id="armorCost">30</span> coins</button>
-  <button onclick="buy('health')">3 - Upgrade Max Health: <span id="healthCost">35</span> coins</button>
-  <button onclick="buy('speed')">4 - Upgrade Speed: <span id="speedCost">40</span> coins</button>
+  <p>Press E to close. Buy by clicking buttons or pressing 1, 2, 3, 4.</p>
+  <button id="buyWeapon">1 - Weapon: <span id="weaponCost">10</span> coins</button>
+  <button id="buyArmor">2 - Armor: <span id="armorCost">12</span> coins</button>
+  <button id="buyHealth">3 - Max Health: <span id="healthCost">15</span> coins</button>
+  <button id="buySpeed">4 - Speed: <span id="speedCost">18</span> coins</button>
 </div>
 
 <canvas id="game" width="960" height="540"></canvas>
@@ -60,6 +61,11 @@ const armorCostText=document.getElementById("armorCost");
 const healthCostText=document.getElementById("healthCost");
 const speedCostText=document.getElementById("speedCost");
 
+document.getElementById("buyWeapon").onclick=()=>buy("weapon");
+document.getElementById("buyArmor").onclick=()=>buy("armor");
+document.getElementById("buyHealth").onclick=()=>buy("health");
+document.getElementById("buySpeed").onclick=()=>buy("speed");
+
 const keys={};
 const pressed={};
 
@@ -76,24 +82,17 @@ let messageTimer=180;
 let shake=0;
 
 const player={
-  x:480,
-  y:270,
-  r:18,
-  hp:100,
-  maxHp:100,
-  speed:4.2,
-  damage:18,
-  weapon:1,
-  armor:0,
-  speedLevel:0,
-  facingX:1,
-  facingY:0
+  x:480,y:270,r:18,
+  hp:100,maxHp:100,
+  speed:4.2,damage:18,
+  weapon:1,armor:0,speedLevel:0,
+  facingX:1,facingY:0
 };
 
-let weaponCost=25;
-let armorCost=30;
-let healthCost=35;
-let speedCost=40;
+let weaponCost=10;
+let armorCost=12;
+let healthCost=15;
+let speedCost=18;
 
 const enemies=[];
 const coinsOnGround=[];
@@ -118,20 +117,48 @@ document.addEventListener("keydown",e=>{
   if(k==="e"){
     shopOpen=!shopOpen;
     shopBox.classList.toggle("show",shopOpen);
+    show(shopOpen?"Shop opened":"Back to battle",60);
   }
 
   if(k==="1")buy("weapon");
   if(k==="2")buy("armor");
   if(k==="3")buy("health");
   if(k==="4")buy("speed");
-  if(k==="r")restart();
+  if(k==="r")restartKeepUpgrades();
 });
 
 document.addEventListener("keyup",e=>{
   keys[e.key.toLowerCase()]=false;
 });
 
-function restart(){
+function restartKeepUpgrades(){
+  wave=1;
+  gameOver=false;
+  shopOpen=false;
+  shopBox.classList.remove("show");
+  attackTimer=0;
+  dashTimer=0;
+  dashCooldown=0;
+  message="Restarted. Coins and upgrades kept.";
+  messageTimer=140;
+  shake=0;
+
+  player.x=480;
+  player.y=270;
+  player.hp=player.maxHp;
+  player.facingX=1;
+  player.facingY=0;
+
+  enemies.length=0;
+  coinsOnGround.length=0;
+  particles.length=0;
+  damageTexts.length=0;
+
+  spawnWave();
+  updateHud();
+}
+
+function fullReset(){
   wave=1;
   coins=0;
   kills=0;
@@ -157,10 +184,10 @@ function restart(){
   player.facingX=1;
   player.facingY=0;
 
-  weaponCost=25;
-  armorCost=30;
-  healthCost=35;
-  speedCost=40;
+  weaponCost=10;
+  armorCost=12;
+  healthCost=15;
+  speedCost=18;
 
   enemies.length=0;
   coinsOnGround.length=0;
@@ -168,6 +195,7 @@ function restart(){
   damageTexts.length=0;
 
   spawnWave();
+  updateHud();
 }
 
 function show(text,time){
@@ -177,23 +205,17 @@ function show(text,time){
 
 function spawnWave(){
   enemies.length=0;
-  const count=3+Math.floor(wave*1.35);
+  const count=3+Math.floor(wave*1.25);
   const boss=wave%5===0;
 
-  for(let i=0;i<count;i++){
-    spawnEnemy(false);
-  }
+  for(let i=0;i<count;i++)spawnEnemy(false);
+  if(boss)spawnEnemy(true);
 
-  if(boss){
-    spawnEnemy(true);
-    show("Boss wave!",140);
-  }else{
-    show("Wave "+wave,100);
-  }
+  show(boss?"Boss wave!":"Wave "+wave,110);
 }
 
 function spawnEnemy(isBoss){
-  let side=Math.floor(Math.random()*4);
+  const side=Math.floor(Math.random()*4);
   let x=0,y=0;
 
   if(side===0){x=Math.random()*canvas.width;y=-35}
@@ -212,58 +234,54 @@ function spawnEnemy(isBoss){
     speed:isBoss?1.45+wave*.03:fast?2.9+wave*.035:tank?1.25+wave*.02:1.9+wave*.04,
     damage:isBoss?20+wave*2:tank?13+wave:fast?7+wave:8+wave,
     coins:isBoss?80+wave*9:tank?18+wave*3:fast?13+wave*2:10+wave*2,
-    boss:isBoss,
-    fast,
-    tank,
-    hit:0,
-    attackWait:0
+    boss,fast,tank,hit:0,attackWait:0
   });
 }
 
 function buy(type){
-  if(type==="weapon"){
-    if(coins>=weaponCost){
-      coins-=weaponCost;
-      player.weapon++;
-      player.damage+=10;
-      weaponCost=Math.floor(weaponCost*1.55);
-      show("Weapon upgraded!",80);
-    }else show("Not enough coins",60);
+  let bought=false;
+
+  if(type==="weapon"&&coins>=weaponCost){
+    coins-=weaponCost;
+    player.weapon++;
+    player.damage+=10;
+    weaponCost=Math.floor(weaponCost*1.5);
+    bought=true;
+    show("Weapon upgraded!",80);
   }
 
-  if(type==="armor"){
-    if(coins>=armorCost){
-      coins-=armorCost;
-      player.armor++;
-      armorCost=Math.floor(armorCost*1.6);
-      show("Armor upgraded!",80);
-    }else show("Not enough coins",60);
+  if(type==="armor"&&coins>=armorCost){
+    coins-=armorCost;
+    player.armor++;
+    armorCost=Math.floor(armorCost*1.55);
+    bought=true;
+    show("Armor upgraded!",80);
   }
 
-  if(type==="health"){
-    if(coins>=healthCost){
-      coins-=healthCost;
-      player.maxHp+=30;
-      player.hp=player.maxHp;
-      healthCost=Math.floor(healthCost*1.55);
-      show("Health upgraded!",80);
-    }else show("Not enough coins",60);
+  if(type==="health"&&coins>=healthCost){
+    coins-=healthCost;
+    player.maxHp+=30;
+    player.hp=player.maxHp;
+    healthCost=Math.floor(healthCost*1.5);
+    bought=true;
+    show("Health upgraded!",80);
   }
 
-  if(type==="speed"){
-    if(coins>=speedCost){
-      coins-=speedCost;
-      player.speedLevel++;
-      player.speed+=0.35;
-      speedCost=Math.floor(speedCost*1.7);
-      show("Speed upgraded!",80);
-    }else show("Not enough coins",60);
+  if(type==="speed"&&coins>=speedCost){
+    coins-=speedCost;
+    player.speedLevel++;
+    player.speed+=0.35;
+    speedCost=Math.floor(speedCost*1.6);
+    bought=true;
+    show("Speed upgraded!",80);
   }
+
+  if(!bought)show("Not enough coins",70);
+  updateHud();
 }
 
 function dist(ax,ay,bx,by){
-  const dx=ax-bx;
-  const dy=ay-by;
+  const dx=ax-bx,dy=ay-by;
   return Math.sqrt(dx*dx+dy*dy);
 }
 
@@ -283,10 +301,10 @@ function floatingText(x,y,text,color){
   damageTexts.push({x,y,text,color,life:45});
 }
 
-function circleRectCollide(cx,cy,r,rect){
-  const closestX=Math.max(rect.x,Math.min(cx,rect.x+rect.w));
-  const closestY=Math.max(rect.y,Math.min(cy,rect.y+rect.h));
-  return dist(cx,cy,closestX,closestY)<r;
+function circleRectCollide(cx,cy,r,o){
+  const px=Math.max(o.x,Math.min(cx,o.x+o.w));
+  const py=Math.max(o.y,Math.min(cy,o.y+o.h));
+  return dist(cx,cy,px,py)<r;
 }
 
 function keepOutOfObstacles(obj){
@@ -296,11 +314,11 @@ function keepOutOfObstacles(obj){
       const right=Math.abs(obj.x-(o.x+o.w));
       const top=Math.abs(obj.y-o.y);
       const bottom=Math.abs(obj.y-(o.y+o.h));
-      const min=Math.min(left,right,top,bottom);
+      const m=Math.min(left,right,top,bottom);
 
-      if(min===left)obj.x=o.x-obj.r;
-      else if(min===right)obj.x=o.x+o.w+obj.r;
-      else if(min===top)obj.y=o.y-obj.r;
+      if(m===left)obj.x=o.x-obj.r;
+      else if(m===right)obj.x=o.x+o.w+obj.r;
+      else if(m===top)obj.y=o.y-obj.r;
       else obj.y=o.y+o.h+obj.r;
     }
   }
@@ -308,12 +326,30 @@ function keepOutOfObstacles(obj){
 
 function attack(){
   if(attackTimer>0)return;
-
   attackTimer=20;
 
-  const reach=72+player.weapon*2;
-  const ax=player.x+player.facingX*48;
-  const ay=player.y+player.facingY*48;
+  let target=null;
+  let best=999999;
+
+  for(const e of enemies){
+    const d=dist(player.x,player.y,e.x,e.y);
+    if(d<best){
+      best=d;
+      target=e;
+    }
+  }
+
+  if(target){
+    const dx=target.x-player.x;
+    const dy=target.y-player.y;
+    const len=Math.sqrt(dx*dx+dy*dy)||1;
+    player.facingX=dx/len;
+    player.facingY=dy/len;
+  }
+
+  const reach=95+player.weapon*4;
+  const ax=player.x+player.facingX*54;
+  const ay=player.y+player.facingY*54;
   let hit=false;
 
   for(const e of enemies){
@@ -373,7 +409,6 @@ function updatePlayer(){
 function updateEnemies(){
   for(let i=enemies.length-1;i>=0;i--){
     const e=enemies[i];
-
     const dx=player.x-e.x;
     const dy=player.y-e.y;
     const d=Math.sqrt(dx*dx+dy*dy)||1;
@@ -413,7 +448,7 @@ function updateEnemies(){
 function updateCoins(){
   for(let i=coinsOnGround.length-1;i>=0;i--){
     const c=coinsOnGround[i];
-    const d=dist(player.x,player.y,c.x,c.y);
+    const d=dist(player.x,player.y,c.x,c.y)||1;
 
     if(d<120){
       c.x+=(player.x-c.x)/d*4;
@@ -424,6 +459,7 @@ function updateCoins(){
       coins+=c.value;
       burst(c.x,c.y,"#facc15",10);
       coinsOnGround.splice(i,1);
+      updateHud();
     }
   }
 }
@@ -436,6 +472,7 @@ function updateEffects(){
     p.vx*=0.94;
     p.vy*=0.94;
     p.life--;
+
     if(p.life<=0)particles.splice(i,1);
   }
 
@@ -443,13 +480,14 @@ function updateEffects(){
     const t=damageTexts[i];
     t.y-=0.7;
     t.life--;
+
     if(t.life<=0)damageTexts.splice(i,1);
   }
 }
 
 function update(){
   if(gameOver){
-    if(pressed.r)restart();
+    if(pressed.r)restartKeepUpgrades();
     clearPressed();
     return;
   }
@@ -469,7 +507,7 @@ function update(){
 
   if(player.hp<=0){
     gameOver=true;
-    show("Game Over - Press R to restart",999999);
+    show("Game Over - Press R to restart with upgrades",999999);
   }
 
   shake*=0.85;
@@ -478,7 +516,9 @@ function update(){
 }
 
 function clearPressed(){
-  for(const k in pressed)pressed[k]=false;
+  for(const k in pressed){
+    pressed[k]=false;
+  }
 }
 
 function updateHud(){
@@ -494,8 +534,17 @@ function updateHud(){
   speedCostText.textContent=speedCost;
 }
 
-function rect(x,y,w,h,color){ctx.fillStyle=color;ctx.fillRect(x,y,w,h)}
-function circle(x,y,r,color){ctx.fillStyle=color;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill()}
+function rect(x,y,w,h,color){
+  ctx.fillStyle=color;
+  ctx.fillRect(x,y,w,h);
+}
+
+function circle(x,y,r,color){
+  ctx.fillStyle=color;
+  ctx.beginPath();
+  ctx.arc(x,y,r,0,Math.PI*2);
+  ctx.fill();
+}
 
 function drawGrid(){
   rect(0,0,canvas.width,canvas.height,"#182033");
@@ -548,6 +597,7 @@ function drawPlayer(){
 function drawEnemies(){
   for(const e of enemies){
     let color="#7c3aed";
+
     if(e.boss)color="#111827";
     if(e.fast)color="#0891b2";
     if(e.tank)color="#c2410c";
@@ -581,12 +631,14 @@ function drawEffects(){
 
   ctx.font="bold 16px Arial";
   ctx.textAlign="center";
+
   for(const t of damageTexts){
     ctx.globalAlpha=Math.max(0,t.life/45);
     ctx.fillStyle=t.color;
     ctx.fillText(t.text,t.x,t.y);
     ctx.globalAlpha=1;
   }
+
   ctx.textAlign="left";
 }
 
@@ -607,7 +659,7 @@ function drawText(){
     ctx.textAlign="center";
     ctx.fillText("SHOP OPEN",480,245);
     ctx.font="18px Arial";
-    ctx.fillText("Press E to return to battle",480,280);
+    ctx.fillText("Click a shop button or press 1, 2, 3, 4",480,280);
     ctx.textAlign="left";
   }
 
@@ -618,7 +670,7 @@ function drawText(){
     ctx.textAlign="center";
     ctx.fillText("GAME OVER",480,240);
     ctx.font="22px Arial";
-    ctx.fillText("Press R to restart",480,282);
+    ctx.fillText("Press R to restart and keep upgrades",480,282);
     ctx.textAlign="left";
   }
 }
@@ -646,7 +698,7 @@ function loop(){
   requestAnimationFrame(loop);
 }
 
-restart();
+fullReset();
 loop();
 </script>
 </body>
