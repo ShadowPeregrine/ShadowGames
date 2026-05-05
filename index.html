@@ -21,8 +21,8 @@ canvas{display:block;margin:12px auto;border:4px solid white;background:#182033;
 <body>
 
 <h1>Shadow Arena RPG</h1>
-<p>Arrow Keys: Move | Space: Auto-Attack | E: Shop | 1-4: Buy | Shift: Dash | R: Restart Wave 1</p>
-<p>You keep your coins and upgrades when you restart.</p>
+<p>Arrow Keys: Move | Space: Auto-Attack | E: Shop | 1-4: Buy | Shift: Dash | R: Restart Wave 1 | L: Skip Wave</p>
+<p>You keep your coins and upgrades when you restart or skip.</p>
 
 <div class="hud">
   <div>Wave: <span id="wave">1</span></div>
@@ -125,6 +125,7 @@ document.addEventListener("keydown",function(e){
   if(k==="3")buy("health");
   if(k==="4")buy("speed");
   if(k==="r")restartKeepUpgrades();
+  if(k==="l")skipWave();
 });
 
 document.addEventListener("keyup",function(e){
@@ -155,6 +156,21 @@ function restartKeepUpgrades(){
   damageTexts.length=0;
 
   spawnWave();
+  updateHud();
+}
+
+function skipWave(){
+  if(gameOver)return;
+
+  wave++;
+  player.hp=player.maxHp;
+  enemies.length=0;
+  coinsOnGround.length=0;
+  particles.length=0;
+  damageTexts.length=0;
+
+  spawnWave();
+  show("Skipped to wave "+wave,90);
   updateHud();
 }
 
