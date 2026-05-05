@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shadow Race</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#07111f;color:white;text-align:center;font-family:Arial,sans-serif}
+h1{margin:12px 0 4px;font-size:42px}
+p{margin:6px;color:#cbd5e1}
+.hud{display:flex;justify-content:center;gap:14px;flex-wrap:wrap;margin:10px 0;font-size:17px}
+.hud span{color:#facc15;font-weight:bold}
+canvas{display:block;margin:12px auto;border:4px solid white;background:#1e293b;max-width:95vw;box-shadow:0 0 35px #000}
+.shop{max-width:960px;margin:0 auto 12px;padding:10px;border:2px solid #334155;background:#111827;display:none}
+.shop.show{display:block}
+.shop button{margin:5px;padding:10px 12px;border:0;border-radius:6px;background:#facc15;color:#111827;font-weight:bold;cursor:pointer}
+.shop button:hover{background:#fde047}
+</style>
+</head>
+<body>
+
+<h1>Shadow Race</h1>
+<p>Arrow Keys: Move | E: Shop | 1: Run Speed | 2: Swim Speed | 3: Stamina | R: Restart Race</p>
+<p>Reach the finish line. Water uses swim speed. Mud slows you. Yellow arrows boost you.</p>
+
+<div class="hud">
+  <div>Race: <span id="race">1</span></div>
+  <div>Coins: <span id="coins">0</span></div>
+  <div>Time: <span id="time">0.0</span></div>
+  <div>Best: <span id="best">--</span></div>
+  <div>Run Lv: <span id="runLevel">1</span></div>
+  <div>Swim Lv: <span id="swimLevel">1</span></div>
+  <div>Stamina: <span id="stamina">100</span></div>
+</div>
+
+<div class="shop" id="shop">
+  <h2>Upgrade Shop</h2>
+  <p>Press E to close. You keep upgrades after every race.</p>
+  <button id="buyRun">1 - Upgrade Run Speed: <span id="runCost">20</span> coins</button>
+  <button id="buySwim">2 - Upgrade Swim Speed: <span id="swimCost">20</span> coins</button>
+  <button id="buyStamina">3 - Upgrade Stamina: <span id="staminaCost">25</span> coins</button>
+</div>
+
+<canvas id="game" width="960" height="540"></canvas>
+
+<script>
+const canvas=document.getElementById("game");
+const ctx=canvas.getContext("2d");
+
+const raceText=document.getElementById("race");
+const coinsText=document.getElementById("coins");
+const timeText=document.getElementById("time");
+const bestText=document.getElementById("best");
+const runLevelText=document.getElementById("runLevel");
+const swimLevelText=document.getElementById("swimLevel");
+const staminaText=document.getElementById("stamina");
+const shopBox=document.getElementById("shop");
+
+const runCostText=document.getElementById("runCost");
+const swimCostText=document.getElementById("swimCost");
+const staminaCostText=document.getElementById("staminaCost");
+
+document.getElementById("buyRun").onclick=function(){buy("run")};
+document.getElementById("buySwim").onclick=function(){buy("swim")};
+document.getElementById("buyStamina").onclick=function(){buy("stamina")};
+
+const keys={};
+const pressed={};
+
+let race=1;
+let coins=0;
+let time=0;
+let best=null;
+let finished=false;
+let shopOpen=false;
+let message="Race to the finish!";
+let messageTimer=160;
+let cameraX=0;
+let shake=0;
+
+let runLevel=1;
+let swimLevel=1;
+let staminaLevel=1;
+
+let runCost=20;
+let swimCost=20;
+let staminaCost=25;
+
+const player={
+  x:60,
+  y:270,
+  r:16,
+  vx:0,
+  vy:0,
+  stamina:100,
+  maxStamina:100
+};
+
+const particles=[];
+let track={};
+
+document.addEventListener("keydown",function(e){
+  const k=e.key.toLowerCase();
+  if(!keys[k])pressed[k]=true;
+  keys[k]=true;
+
+  if(["arrowup","arrowdown","arrowleft","arrowright"," "].includes(k)){
+    e.preventDefault();
+  }
+
+  if(k==="e"){
+    shopOpen=!shopOpen;
+    shopBox.classList.toggle("show",shopOpen);
+    show(shopOpen?"Shop opened":"Back to race",70);
+  }
+
+  if(k==="1")buy("run");
+  if(k==="2")buy("swim");
+  if(k==="3")buy("stamina");
+  if(k==="r")restartRace();
+});
+
+document.addEventListener("keyup",function(e){
+  keys[e.key.toLowerCase()]=false;
+});
+
+function makeTrack(){
+  const length=2200+race*180;
+  const water=[];
+  const mud=[];
+  const boosts=[];
+  const coinList=[];
+  const rocks=[];
+
+  for(let i=0;i<4+Math.floor(race/2);i++){
+    const x=350+i*430+(race%3)*45;
+    water.push({x:x,y:80+(i%2)*250,w:210+race*4,h:155});
+  }
+
+  for(let i=0;i<5+Math.floor(race/2);i++){
+    const x=260+i*360+(race%4)*30;
+    mud.push({x:x,y:235-(i%2)*85,w:150,h:85});
+  }
+
+  for(let i=0;i<6+Math.floor(race/2);i++){
+    boosts.push({x:420+i*300,y:110+(i%3)*130,w:42,h:26,used:false});
+  }
+
+  for(let i=0;i<20+race*2;i++){
+    coinList.push({x:220+i*95,y:80+(i*73)%360,r:8,got:false});
+  }
+
+  for(let i=0;i<7+race;i++){
+    rocks.push({x:500+i*260,y:80+(i*97)%390,r:18});
+  }
+
+  return {
+    length:length,
+    finishX:length-120,
+    water:water,
+    mud:mud,
+    boosts:boosts,
+    coins:coinList,
+    rocks:rocks
+  };
+}
+
+function restartRace(){
+  time=0;
+  finished=false;
+  shopOpen=false;
+  shopBox.classList.remove("show");
+  player.x=60;
+  player.y=270;
+  player.vx=0;
+  player.vy=0;
+  player.maxStamina=100+(staminaLevel-1)*25;
+  player.stamina=player.maxStamina;
+  track=makeTrack();
+  cameraX=0;
+  show("Race "+race,100);
+  updateHud();
+}
+
+function nextRace(){
+  finished=true;
+
+  if(best===null||time<best){
+    best=time;
+    show("New best time!",120);
+  }else{
+    show("Race complete!",120);
+  }
+
+  coins+=50+race*10;
+  race++;
+  updateHud();
+
+  setTimeout(function(){
+    restartRace();
+  },900);
+}
+
+function show(text,timer){
+  message=text;
+  messageTimer=timer;
+}
+
+function buy(type){
+  let bought=false;
+
+  if(type==="run"&&coins>=runCost){
+    coins-=runCost;
+    runLevel++;
+    runCost=Math.floor(runCost*1.55);
+    bought=true;
+    show("Run speed upgraded!",90);
+  }
+
+  if(type==="swim"&&coins>=swimCost){
+    coins-=swimCost;
+    swimLevel++;
+    swimCost=Math.floor(swimCost*1.55);
+    bought=true;
+    show("Swim speed upgraded!",90);
+  }
+
+  if(type==="stamina"&&coins>=staminaCost){
+    coins-=staminaCost;
+    staminaLevel++;
+    player.maxStamina=100+(staminaLevel-1)*25;
+    player.stamina=player.maxStamina;
+    staminaCost=Math.floor(staminaCost*1.6);
+    bought=true;
+    show("Stamina upgraded!",90);
+  }
+
+  if(!bought)show("Not enough coins",70);
+  updateHud();
+}
+
+function inZone(list){
+  for(const z of list){
+    if(player.x>z.x&&player.x<z.x+z.w&&player.y>z.y&&player.y<z.y+z.h)return z;
+  }
+  return null;
+}
+
+function dist(ax,ay,bx,by){
+  const dx=ax-bx;
+  const dy=ay-by;
+  return Math.sqrt(dx*dx+dy*dy);
+}
+
+function burst(x,y,color,n){
+  for(let i=0;i<n;i++){
+    particles.push({
+      x:x,
+      y:y,
+      vx:(Math.random()-.5)*5,
+      vy:(Math.random()-.5)*5,
+      life:25+Math.random()*20,
+      color:color
+    });
+  }
+}
+
+function updatePlayer(){
+  let mx=0;
+  let my=0;
+
+  if(keys.arrowleft)mx--;
+  if(keys.arrowright)mx++;
+  if(keys.arrowup)my--;
+  if(keys.arrowdown)my++;
+
+  if(mx!==0||my!==0){
+    const len=Math.sqrt(mx*mx+my*my);
+    mx/=len;
+    my/=len;
+  }
+
+  const water=inZone(track.water);
+  const mud=inZone(track.mud);
+
+  let speed=water?2.2+swimLevel*0.42:3.1+runLevel*0.45;
+
+  if(mud)speed*=0.45;
+
+  if(keys[" "]&&player.stamina>0){
+    speed*=1.75;
+    player.stamina-=1.2;
+    if(Math.random()<0.45)burst(player.x-cameraX,player.y,"#facc15",1);
+  }else{
+    player.stamina=Math.min(player.maxStamina,player.stamina+0.35);
+  }
+
+  player.vx=mx*speed;
+  player.vy=my*speed;
+
+  player.x+=player.vx;
+  player.y+=player.vy;
+
+  player.y=Math.max(player.r+22,Math.min(canvas.height-player.r-24,player.y));
+  player.x=Math.max(player.r,Math.min(track.length,player.x));
+
+  for(const b of track.boosts){
+    if(!b.used&&player.x>b.x&&player.x<b.x+b.w&&player.y>b.y&&player.y<b.y+b.h){
+      b.used=true;
+      player.x+=120;
+      shake=7;
+      burst(player.x-cameraX,player.y,"#fde047",18);
+      show("Boost!",45);
+    }
+  }
+
+  for(const c of track.coins){
+    if(!c.got&&dist(player.x,player.y,c.x,c.y)<player.r+c.r){
+      c.got=true;
+      coins+=5;
+      burst(c.x-cameraX,c.y,"#facc15",8);
+    }
+  }
+
+  for(const r of track.rocks){
+    if(dist(player.x,player.y,r.x,r.y)<player.r+r.r){
+      player.x-=45;
+      player.vx=0;
+      shake=8;
+      burst(r.x-cameraX,r.y,"#94a3b8",10);
+    }
+  }
+
+  if(player.x>=track.finishX&&!finished){
+    nextRace();
+  }
+}
+
+function updateParticles(){
+  for(let i=particles.length-1;i>=0;i--){
+    const p=particles[i];
+    p.x+=p.vx;
+    p.y+=p.vy;
+    p.vx*=0.92;
+    p.vy*=0.92;
+    p.life--;
+    if(p.life<=0)particles.splice(i,1);
+  }
+}
+
+function update(){
+  if(!shopOpen&&!finished){
+    time+=1/60;
+    updatePlayer();
+  }
+
+  updateParticles();
+
+  cameraX=player.x-260;
+  cameraX=Math.max(0,Math.min(track.length-canvas.width,cameraX));
+
+  if(messageTimer>0){
+    messageTimer--;
+    if(messageTimer<=0)message="";
+  }
+
+  shake*=0.85;
+  updateHud();
+
+  for(const k in pressed)pressed[k]=false;
+}
+
+function updateHud(){
+  raceText.textContent=race;
+  coinsText.textContent=coins;
+  timeText.textContent=time.toFixed(1);
+  bestText.textContent=best===null?"--":best.toFixed(1);
+  runLevelText.textContent=runLevel;
+  swimLevelText.textContent=swimLevel;
+  staminaText.textContent=Math.floor(player.stamina)+"/"+player.maxStamina;
+
+  runCostText.textContent=runCost;
+  swimCostText.textContent=swimCost;
+  staminaCostText.textContent=staminaCost;
+}
+
+function rect(x,y,w,h,color){
+  ctx.fillStyle=color;
+  ctx.fillRect(x,y,w,h);
+}
+
+function circle(x,y,r,color){
+  ctx.fillStyle=color;
+  ctx.beginPath();
+  ctx.arc(x,y,r,0,Math.PI*2);
+  ctx.fill();
+}
+
+function drawTrack(){
+  rect(0,0,canvas.width,canvas.height,"#14532d");
+
+  for(let x=-cameraX%80;x<canvas.width;x+=80){
+    rect(x,0,3,canvas.height,"rgba(255,255,255,.08)");
+  }
+
+  rect(-cameraX,20,track.length,canvas.height-40,"#166534");
+
+  for(const w of track.water){
+    rect(w.x-cameraX,w.y,w.w,w.h,"#0284c7");
+    rect(w.x-cameraX,w.y,w.w,8,"#7dd3fc");
+  }
+
+  for(const m of track.mud){
+    rect(m.x-cameraX,m.y,m.w,m.h,"#78350f");
+    rect(m.x-cameraX,m.y,m.w,7,"#b45309");
+  }
+
+  for(const b of track.boosts){
+    rect(b.x-cameraX,b.y,b.w,b.h,b.used?"#475569":"#facc15");
+    ctx.fillStyle="#111827";
+    ctx.beginPath();
+    ctx.moveTo(b.x-cameraX+9,b.y+5);
+    ctx.lineTo(b.x-cameraX+32,b.y+13);
+    ctx.lineTo(b.x-cameraX+9,b.y+21);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  for(const c of track.coins){
+    if(!c.got){
+      circle(c.x-cameraX,c.y,c.r,"#facc15");
+      circle(c.x-cameraX-3,c.y-3,3,"#fff7ad");
+    }
+  }
+
+  for(const r of track.rocks){
+    circle(r.x-cameraX,r.y,r.r,"#64748b");
+    circle(r.x-cameraX-5,r.y-5,5,"#94a3b8");
+  }
+
+  rect(track.finishX-cameraX,20,10,canvas.height-40,"white");
+  for(let y=20;y<canvas.height-40;y+=24){
+    rect(track.finishX-cameraX,y,10,12,y%48===20?"#111827":"white");
+  }
+}
+
+function drawPlayer(){
+  const water=inZone(track.water);
+  circle(player.x-cameraX,player.y,player.r,water?"#075985":"#0f172a");
+  circle(player.x-cameraX+5,player.y-5,5,"#38bdf8");
+
+  if(keys[" "]&&player.stamina>0){
+    circle(player.x-cameraX-14,player.y,5,"#facc15");
+  }
+}
+
+function drawParticles(){
+  for(const p of particles){
+    ctx.globalAlpha=Math.max(0,p.life/45);
+    circle(p.x,p.y,3,p.color);
+    ctx.globalAlpha=1;
+  }
+}
+
+function drawText(){
+  if(message){
+    rect(270,18,420,42,"rgba(2,6,23,.72)");
+    ctx.fillStyle="white";
+    ctx.font="bold 18px Arial";
+    ctx.textAlign="center";
+    ctx.fillText(message,480,45);
+    ctx.textAlign="left";
+  }
+
+  if(shopOpen){
+    rect(0,0,canvas.width,canvas.height,"rgba(2,6,23,.48)");
+    ctx.fillStyle="white";
+    ctx.font="bold 36px Arial";
+    ctx.textAlign="center";
+    ctx.fillText("SHOP OPEN",480,245);
+    ctx.font="18px Arial";
+    ctx.fillText("Press E to return to racing",480,280);
+    ctx.textAlign="left";
+  }
+}
+
+function drawMiniMap(){
+  const x=700;
+  const y=500;
+  const w=220;
+  const h=12;
+  rect(x,y,w,h,"#0f172a");
+  rect(x,y,w*(player.x/track.length),h,"#facc15");
+  rect(x+w*(track.finishX/track.length),y-4,4,h+8,"white");
+}
+
+function draw(){
+  ctx.save();
+
+  if(shake>1){
+    ctx.translate((Math.random()-.5)*shake,(Math.random()-.5)*shake);
+  }
+
+  drawTrack();
+  drawPlayer();
+  drawParticles();
+  drawMiniMap();
+  drawText();
+
+  ctx.restore();
+}
+
+function loop(){
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+
+restartRace();
+loop();
+</script>
+</body>
+</html>
