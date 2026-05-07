@@ -3,735 +3,222 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Shadow Arena RPG</title>
+<title>Keyboard Quest</title>
 <style>
 *{box-sizing:border-box}
-body{margin:0;background:#070b16;color:white;text-align:center;font-family:Arial,sans-serif}
-h1{margin:12px 0 4px;font-size:42px}
-p{margin:6px;color:#cbd5e1}
-.hud{display:flex;justify-content:center;gap:14px;flex-wrap:wrap;margin:10px 0;font-size:17px}
-.hud span{color:#facc15;font-weight:bold}
-canvas{display:block;margin:12px auto;border:4px solid white;background:#182033;max-width:95vw;box-shadow:0 0 35px #000}
-.shop{max-width:960px;margin:0 auto 12px;padding:10px;border:2px solid #334155;background:#111827;display:none}
-.shop.show{display:block}
-.shop button{margin:5px;padding:10px 12px;border:0;border-radius:6px;background:#facc15;color:#111827;font-weight:bold;cursor:pointer}
-.shop button:hover{background:#fde047}
+body{margin:0;background:#f0f9ff;color:#0f172a;text-align:center;font-family:Arial,sans-serif}
+h1{margin:16px 0 6px;font-size:44px;color:#2563eb}
+p{margin:6px;color:#475569}
+.hud{display:flex;justify-content:center;gap:14px;flex-wrap:wrap;margin:12px 0;font-size:18px}
+.hud div{background:white;border:2px solid #bfdbfe;border-radius:12px;padding:10px 14px}
+.hud span{color:#f59e0b;font-weight:bold}
+.game{width:min(920px,95vw);margin:12px auto;padding:18px;background:white;border:4px solid #93c5fd;border-radius:18px;box-shadow:0 10px 30px rgba(37,99,235,.18)}
+.word{font-size:56px;font-weight:bold;color:#16a34a;margin:20px 0}
+input{font-size:32px;text-align:center;padding:12px;width:min(520px,90%);border:4px solid #93c5fd;border-radius:14px;outline:none}
+input:focus{border-color:#2563eb}
+button{margin:8px;padding:12px 18px;border:0;border-radius:12px;background:#2563eb;color:white;font-weight:bold;font-size:16px;cursor:pointer}
+button:hover{background:#1d4ed8}
+.options{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin:10px}
+.options button{background:#f59e0b}
+.options button:hover{background:#d97706}
+.feedback{font-size:24px;font-weight:bold;min-height:34px;margin:12px}
+.progress{height:22px;width:min(640px,90%);margin:14px auto;background:#dbeafe;border-radius:999px;overflow:hidden}
+.bar{height:100%;width:0;background:#22c55e;transition:.2s}
+.big{font-size:20px}
 </style>
 </head>
 <body>
 
-<h1>Shadow Arena RPG</h1>
-<p>Arrow Keys: Move | Space: Auto-Attack | E: Shop | 1-4: Buy | Shift: Dash | R: Restart | L: Skip Wave | C: Coins</p>
-<p>You keep your coins and upgrades when you restart or skip.</p>
+<h1>Keyboard Quest</h1>
+<p>Type the word you see, then press Enter. Great for elementary school practice.</p>
 
 <div class="hud">
-  <div>Wave: <span id="wave">1</span></div>
-  <div>Health: <span id="hp">100</span></div>
-  <div>Coins: <span id="coins">0</span></div>
-  <div>Weapon: <span id="weapon">1</span></div>
-  <div>Armor: <span id="armor">0</span></div>
-  <div>Kills: <span id="kills">0</span></div>
+  <div>Level: <span id="level">1</span></div>
+  <div>Score: <span id="score">0</span></div>
+  <div>Streak: <span id="streak">0</span></div>
+  <div>Time: <span id="time">60</span></div>
+  <div>Words: <span id="wordsDone">0</span></div>
 </div>
 
-<div class="shop" id="shop">
-  <h2>Shop</h2>
-  <p>Press E to close. Buy by clicking buttons or pressing 1, 2, 3, 4.</p>
-  <button id="buyWeapon">1 - Weapon: <span id="weaponCost">10</span> coins</button>
-  <button id="buyArmor">2 - Armor: <span id="armorCost">12</span> coins</button>
-  <button id="buyHealth">3 - Max Health: <span id="healthCost">15</span> coins</button>
-  <button id="buySpeed">4 - Speed: <span id="speedCost">18</span> coins</button>
-</div>
+<div class="game">
+  <div class="options">
+    <button onclick="setMode('easy')">Easy</button>
+    <button onclick="setMode('medium')">Medium</button>
+    <button onclick="setMode('hard')">Challenge</button>
+  </div>
 
-<canvas id="game" width="960" height="540"></canvas>
+  <p class="big">Mode: <span id="mode">Easy</span></p>
+  <div class="word" id="word">cat</div>
+  <input id="answer" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="type here">
+  <div class="feedback" id="feedback"></div>
+
+  <div class="progress">
+    <div class="bar" id="bar"></div>
+  </div>
+
+  <button onclick="startGame()">Start / Restart</button>
+</div>
 
 <script>
-const canvas=document.getElementById("game");
-const ctx=canvas.getContext("2d");
+const wordBox=document.getElementById("word");
+const answer=document.getElementById("answer");
+const feedback=document.getElementById("feedback");
+const levelText=document.getElementById("level");
+const scoreText=document.getElementById("score");
+const streakText=document.getElementById("streak");
+const timeText=document.getElementById("time");
+const wordsDoneText=document.getElementById("wordsDone");
+const bar=document.getElementById("bar");
+const modeText=document.getElementById("mode");
 
-const waveText=document.getElementById("wave");
-const hpText=document.getElementById("hp");
-const coinsText=document.getElementById("coins");
-const weaponText=document.getElementById("weapon");
-const armorText=document.getElementById("armor");
-const killsText=document.getElementById("kills");
-const shopBox=document.getElementById("shop");
-
-const weaponCostText=document.getElementById("weaponCost");
-const armorCostText=document.getElementById("armorCost");
-const healthCostText=document.getElementById("healthCost");
-const speedCostText=document.getElementById("speedCost");
-
-document.getElementById("buyWeapon").onclick=function(){buy("weapon")};
-document.getElementById("buyArmor").onclick=function(){buy("armor")};
-document.getElementById("buyHealth").onclick=function(){buy("health")};
-document.getElementById("buySpeed").onclick=function(){buy("speed")};
-
-const keys={};
-const pressed={};
-
-let wave=1;
-let coins=0;
-let kills=0;
-let gameOver=false;
-let shopOpen=false;
-let attackTimer=0;
-let dashTimer=0;
-let dashCooldown=0;
-let message="Defeat enemies, collect coins, buy upgrades.";
-let messageTimer=180;
-let shake=0;
-
-const player={
-  x:480,y:270,r:18,
-  hp:100,maxHp:100,
-  speed:4.2,damage:18,
-  weapon:1,armor:0,speedLevel:0,
-  facingX:1,facingY:0
-};
-
-let weaponCost=10;
-let armorCost=12;
-let healthCost=15;
-let speedCost=18;
-
-const enemies=[];
-const coinsOnGround=[];
-const particles=[];
-const damageTexts=[];
-const obstacles=[
-  {x:170,y:145,w:95,h:40},
-  {x:695,y:355,w:95,h:40},
-  {x:430,y:95,w:100,h:35},
-  {x:430,y:410,w:100,h:35}
+const easy=[
+  "cat","dog","sun","run","big","red","blue","jump","fish","bird",
+  "book","tree","star","ball","cake","milk","home","play","frog","hat"
 ];
 
-document.addEventListener("keydown",function(e){
-  const k=e.key.toLowerCase();
-  if(!keys[k])pressed[k]=true;
-  keys[k]=true;
+const medium=[
+  "apple","happy","school","pencil","yellow","purple","rabbit","planet","window","garden",
+  "friend","family","summer","winter","button","rocket","cookie","flower","monkey","turtle"
+];
 
-  if(["arrowup","arrowdown","arrowleft","arrowright"," ","shift"].includes(k)){
-    e.preventDefault();
+const hard=[
+  "elephant","computer","keyboard","library","dinosaur","sandwich","backpack","mountain","rainbow","football",
+  "butterfly","playground","chocolate","adventure","treasure","sentence","practice","question","favorite","excellent"
+];
+
+let mode="easy";
+let currentWord="cat";
+let score=0;
+let streak=0;
+let level=1;
+let wordsDone=0;
+let time=60;
+let playing=false;
+let timer=null;
+
+function setMode(newMode){
+  mode=newMode;
+  modeText.textContent=newMode==="easy"?"Easy":newMode==="medium"?"Medium":"Challenge";
+  nextWord();
+  answer.focus();
+}
+
+function wordList(){
+  if(mode==="easy")return easy;
+  if(mode==="medium")return medium;
+  return hard;
+}
+
+function pickWord(){
+  const list=wordList();
+  return list[Math.floor(Math.random()*list.length)];
+}
+
+function nextWord(){
+  currentWord=pickWord();
+  wordBox.textContent=currentWord;
+  answer.value="";
+}
+
+function startGame(){
+  score=0;
+  streak=0;
+  level=1;
+  wordsDone=0;
+  time=60;
+  playing=true;
+  feedback.textContent="";
+  updateHud();
+  nextWord();
+  answer.focus();
+
+  clearInterval(timer);
+  timer=setInterval(function(){
+    if(!playing)return;
+    time--;
+    updateHud();
+
+    if(time<=0){
+      playing=false;
+      clearInterval(timer);
+      feedback.textContent="Time is up! Final score: "+score;
+      feedback.style.color="#2563eb";
+    }
+  },1000);
+}
+
+function correct(){
+  score+=10+streak;
+  streak++;
+  wordsDone++;
+
+  if(wordsDone%10===0){
+    level++;
+    feedback.textContent="Level up!";
+  }else{
+    feedback.textContent="Great job!";
   }
 
-  if(k==="e"){
-    shopOpen=!shopOpen;
-    shopBox.classList.toggle("show",shopOpen);
-    show(shopOpen?"Shop opened":"Back to battle",60);
-  }
+  feedback.style.color="#16a34a";
+  burstProgress();
+  nextWord();
+  updateHud();
+}
 
-  if(k==="1")buy("weapon");
-  if(k==="2")buy("armor");
-  if(k==="3")buy("health");
-  if(k==="4")buy("speed");
-  if(k==="r")restartKeepUpgrades();
-  if(k==="l")skipWave();
-  if(k==="c")addCoins();
+function wrong(){
+  streak=0;
+  feedback.textContent="Try again. You can do it!";
+  feedback.style.color="#dc2626";
+  updateHud();
+}
+
+function burstProgress(){
+  const percent=Math.min(100,(wordsDone%10)*10);
+  bar.style.width=percent+"%";
+  if(percent===0)bar.style.width="100%";
+  setTimeout(function(){
+    if(wordsDone%10===0)bar.style.width="0%";
+  },250);
+}
+
+answer.addEventListener("keydown",function(e){
+  if(e.key==="Enter"){
+    if(!playing){
+      startGame();
+      return;
+    }
+
+    const typed=answer.value.trim().toLowerCase();
+
+    if(typed===currentWord.toLowerCase()){
+      correct();
+    }else{
+      wrong();
+      answer.select();
+    }
+  }
 });
 
-document.addEventListener("keyup",function(e){
-  keys[e.key.toLowerCase()]=false;
+answer.addEventListener("input",function(){
+  if(!playing)return;
+
+  const typed=answer.value.trim().toLowerCase();
+
+  if(typed===currentWord.toLowerCase()){
+    correct();
+  }
 });
-
-function addCoins(){
-  coins += 10000000000000000000;
-  show("+10000000000000000000 coins!",90);
-  updateHud();
-}
-
-function restartKeepUpgrades(){
-  wave=1;
-  gameOver=false;
-  shopOpen=false;
-  shopBox.classList.remove("show");
-  attackTimer=0;
-  dashTimer=0;
-  dashCooldown=0;
-  message="Restarted. Coins and upgrades kept.";
-  messageTimer=140;
-  shake=0;
-
-  player.x=480;
-  player.y=270;
-  player.hp=player.maxHp;
-  player.facingX=1;
-  player.facingY=0;
-
-  enemies.length=0;
-  coinsOnGround.length=0;
-  particles.length=0;
-  damageTexts.length=0;
-
-  spawnWave();
-  updateHud();
-}
-
-function skipWave(){
-  if(gameOver)return;
-
-  wave++;
-  player.hp=player.maxHp;
-  enemies.length=0;
-  coinsOnGround.length=0;
-  particles.length=0;
-  damageTexts.length=0;
-
-  spawnWave();
-  show("Skipped to wave "+wave,90);
-  updateHud();
-}
-
-function fullReset(){
-  wave=1;
-  coins=0;
-  kills=0;
-  gameOver=false;
-  shopOpen=false;
-  shopBox.classList.remove("show");
-  attackTimer=0;
-  dashTimer=0;
-  dashCooldown=0;
-  message="Defeat enemies, collect coins, buy upgrades.";
-  messageTimer=180;
-  shake=0;
-
-  player.x=480;
-  player.y=270;
-  player.hp=100;
-  player.maxHp=100;
-  player.speed=4.2;
-  player.damage=18;
-  player.weapon=1;
-  player.armor=0;
-  player.speedLevel=0;
-  player.facingX=1;
-  player.facingY=0;
-
-  weaponCost=10;
-  armorCost=12;
-  healthCost=15;
-  speedCost=18;
-
-  enemies.length=0;
-  coinsOnGround.length=0;
-  particles.length=0;
-  damageTexts.length=0;
-
-  spawnWave();
-  updateHud();
-}
-
-function show(text,time){
-  message=text;
-  messageTimer=time;
-}
-
-function spawnWave(){
-  enemies.length=0;
-  const count=3+Math.floor(wave*1.25);
-  const bossWave=wave%5===0;
-
-  for(let i=0;i<count;i++)spawnEnemy(false);
-  if(bossWave)spawnEnemy(true);
-
-  show(bossWave?"Boss wave!":"Wave "+wave,110);
-}
-
-function spawnEnemy(isBoss){
-  const side=Math.floor(Math.random()*4);
-  let x=0;
-  let y=0;
-
-  if(side===0){x=Math.random()*canvas.width;y=-35}
-  if(side===1){x=canvas.width+35;y=Math.random()*canvas.height}
-  if(side===2){x=Math.random()*canvas.width;y=canvas.height+35}
-  if(side===3){x=-35;y=Math.random()*canvas.height}
-
-  const fast=!isBoss&&wave>=4&&Math.random()<0.25;
-  const tank=!isBoss&&wave>=7&&Math.random()<0.22;
-
-  enemies.push({
-    x:x,
-    y:y,
-    r:isBoss?36:tank?23:fast?14:17,
-    hp:isBoss?180+wave*28:tank?90+wave*14:fast?35+wave*8:48+wave*10,
-    maxHp:isBoss?180+wave*28:tank?90+wave*14:fast?35+wave*8:48+wave*10,
-    speed:isBoss?1.45+wave*.03:fast?2.9+wave*.035:tank?1.25+wave*.02:1.9+wave*.04,
-    damage:isBoss?20+wave*2:tank?13+wave:fast?7+wave:8+wave,
-    coins:isBoss?80+wave*9:tank?18+wave*3:fast?13+wave*2:10+wave*2,
-    boss:isBoss,
-    fast:fast,
-    tank:tank,
-    hit:0,
-    attackWait:0
-  });
-}
-
-function buy(type){
-  let bought=false;
-
-  if(type==="weapon"&&coins>=weaponCost){
-    coins-=weaponCost;
-    player.weapon++;
-    player.damage+=10;
-    weaponCost=Math.floor(weaponCost*1.5);
-    bought=true;
-    show("Weapon upgraded!",80);
-  }
-
-  if(type==="armor"&&coins>=armorCost){
-    coins-=armorCost;
-    player.armor++;
-    armorCost=Math.floor(armorCost*1.55);
-    bought=true;
-    show("Armor upgraded!",80);
-  }
-
-  if(type==="health"&&coins>=healthCost){
-    coins-=healthCost;
-    player.maxHp+=30;
-    player.hp=player.maxHp;
-    healthCost=Math.floor(healthCost*1.5);
-    bought=true;
-    show("Health upgraded!",80);
-  }
-
-  if(type==="speed"&&coins>=speedCost){
-    coins-=speedCost;
-    player.speedLevel++;
-    player.speed+=0.35;
-    speedCost=Math.floor(speedCost*1.6);
-    bought=true;
-    show("Speed upgraded!",80);
-  }
-
-  if(!bought)show("Not enough coins",70);
-  updateHud();
-}
-
-function dist(ax,ay,bx,by){
-  const dx=ax-bx;
-  const dy=ay-by;
-  return Math.sqrt(dx*dx+dy*dy);
-}
-
-function burst(x,y,color,amount){
-  for(let i=0;i<amount;i++){
-    particles.push({
-      x:x,
-      y:y,
-      vx:(Math.random()-.5)*6,
-      vy:(Math.random()-.5)*6,
-      life:25+Math.random()*25,
-      color:color
-    });
-  }
-}
-
-function floatingText(x,y,text,color){
-  damageTexts.push({x:x,y:y,text:text,color:color,life:45});
-}
-
-function circleRectCollide(cx,cy,r,o){
-  const px=Math.max(o.x,Math.min(cx,o.x+o.w));
-  const py=Math.max(o.y,Math.min(cy,o.y+o.h));
-  return dist(cx,cy,px,py)<r;
-}
-
-function keepOutOfObstacles(obj){
-  for(const o of obstacles){
-    if(circleRectCollide(obj.x,obj.y,obj.r,o)){
-      const left=Math.abs(obj.x-o.x);
-      const right=Math.abs(obj.x-(o.x+o.w));
-      const top=Math.abs(obj.y-o.y);
-      const bottom=Math.abs(obj.y-(o.y+o.h));
-      const m=Math.min(left,right,top,bottom);
-
-      if(m===left)obj.x=o.x-obj.r;
-      else if(m===right)obj.x=o.x+o.w+obj.r;
-      else if(m===top)obj.y=o.y-obj.r;
-      else obj.y=o.y+o.h+obj.r;
-    }
-  }
-}
-
-function attack(){
-  if(attackTimer>0)return;
-  attackTimer=20;
-
-  let target=null;
-  let best=999999;
-
-  for(const e of enemies){
-    const d=dist(player.x,player.y,e.x,e.y);
-    if(d<best){
-      best=d;
-      target=e;
-    }
-  }
-
-  if(target){
-    const dx=target.x-player.x;
-    const dy=target.y-player.y;
-    const len=Math.sqrt(dx*dx+dy*dy)||1;
-    player.facingX=dx/len;
-    player.facingY=dy/len;
-  }
-
-  const reach=95+player.weapon*4;
-  const ax=player.x+player.facingX*54;
-  const ay=player.y+player.facingY*54;
-  let hit=false;
-
-  for(const e of enemies){
-    if(dist(e.x,e.y,ax,ay)<reach){
-      const crit=Math.random()<0.12;
-      const dmg=crit?Math.floor(player.damage*1.8):player.damage;
-      e.hp-=dmg;
-      e.hit=8;
-      hit=true;
-      floatingText(e.x,e.y-e.r,crit?"CRIT "+dmg:dmg,crit?"#facc15":"#ffffff");
-      burst(e.x,e.y,crit?"#facc15":"#fde68a",crit?14:8);
-    }
-  }
-
-  if(hit)shake=5;
-}
-
-function updatePlayer(){
-  let mx=0;
-  let my=0;
-
-  if(keys.arrowleft)mx--;
-  if(keys.arrowright)mx++;
-  if(keys.arrowup)my--;
-  if(keys.arrowdown)my++;
-
-  if(mx!==0||my!==0){
-    const len=Math.sqrt(mx*mx+my*my);
-    mx/=len;
-    my/=len;
-    player.facingX=mx;
-    player.facingY=my;
-  }
-
-  if(pressed.shift&&dashCooldown<=0){
-    dashTimer=9;
-    dashCooldown=80;
-    burst(player.x,player.y,"#38bdf8",16);
-  }
-
-  const speed=dashTimer>0?player.speed*3.1:player.speed;
-
-  player.x+=mx*speed;
-  player.y+=my*speed;
-
-  player.x=Math.max(player.r,Math.min(canvas.width-player.r,player.x));
-  player.y=Math.max(player.r,Math.min(canvas.height-player.r,player.y));
-
-  keepOutOfObstacles(player);
-
-  if(keys[" "])attack();
-
-  if(attackTimer>0)attackTimer--;
-  if(dashTimer>0)dashTimer--;
-  if(dashCooldown>0)dashCooldown--;
-}
-
-function updateEnemies(){
-  for(let i=enemies.length-1;i>=0;i--){
-    const e=enemies[i];
-    const dx=player.x-e.x;
-    const dy=player.y-e.y;
-    const d=Math.sqrt(dx*dx+dy*dy)||1;
-
-    e.x+=dx/d*e.speed;
-    e.y+=dy/d*e.speed;
-
-    keepOutOfObstacles(e);
-
-    if(e.hit>0)e.hit--;
-    if(e.attackWait>0)e.attackWait--;
-
-    if(d<player.r+e.r+2&&e.attackWait<=0){
-      const damage=Math.max(1,e.damage-player.armor*3);
-      player.hp-=damage;
-      e.attackWait=34;
-      shake=7;
-      floatingText(player.x,player.y-player.r,"-"+damage,"#ef4444");
-      burst(player.x,player.y,"#ef4444",10);
-    }
-
-    if(e.hp<=0){
-      kills++;
-      coinsOnGround.push({x:e.x,y:e.y,value:e.coins,r:e.boss?12:8});
-      burst(e.x,e.y,e.boss?"#a855f7":e.fast?"#38bdf8":e.tank?"#fb923c":"#ef4444",e.boss?35:18);
-      enemies.splice(i,1);
-    }
-  }
-
-  if(enemies.length===0&&!gameOver){
-    wave++;
-    player.hp=Math.min(player.maxHp,player.hp+20);
-    spawnWave();
-  }
-}
-
-function updateCoins(){
-  for(let i=coinsOnGround.length-1;i>=0;i--){
-    const c=coinsOnGround[i];
-    const d=dist(player.x,player.y,c.x,c.y)||1;
-
-    if(d<120){
-      c.x+=(player.x-c.x)/d*4;
-      c.y+=(player.y-c.y)/d*4;
-    }
-
-    if(d<player.r+c.r){
-      coins+=c.value;
-      burst(c.x,c.y,"#facc15",10);
-      coinsOnGround.splice(i,1);
-      updateHud();
-    }
-  }
-}
-
-function updateEffects(){
-  for(let i=particles.length-1;i>=0;i--){
-    const p=particles[i];
-    p.x+=p.vx;
-    p.y+=p.vy;
-    p.vx*=0.94;
-    p.vy*=0.94;
-    p.life--;
-
-    if(p.life<=0)particles.splice(i,1);
-  }
-
-  for(let i=damageTexts.length-1;i>=0;i--){
-    const t=damageTexts[i];
-    t.y-=0.7;
-    t.life--;
-
-    if(t.life<=0)damageTexts.splice(i,1);
-  }
-}
-
-function update(){
-  if(gameOver){
-    if(pressed.r)restartKeepUpgrades();
-    clearPressed();
-    return;
-  }
-
-  if(!shopOpen){
-    updatePlayer();
-    updateEnemies();
-    updateCoins();
-  }
-
-  updateEffects();
-
-  if(messageTimer>0){
-    messageTimer--;
-    if(messageTimer<=0)message="";
-  }
-
-  if(player.hp<=0){
-    gameOver=true;
-    show("Game Over - Press R to restart with upgrades",999999);
-  }
-
-  shake*=0.85;
-  updateHud();
-  clearPressed();
-}
-
-function clearPressed(){
-  for(const k in pressed){
-    pressed[k]=false;
-  }
-}
 
 function updateHud(){
-  waveText.textContent=wave;
-  hpText.textContent=Math.max(0,Math.floor(player.hp))+"/"+player.maxHp;
-  coinsText.textContent=coins;
-  weaponText.textContent=player.weapon;
-  armorText.textContent=player.armor;
-  killsText.textContent=kills;
-  weaponCostText.textContent=weaponCost;
-  armorCostText.textContent=armorCost;
-  healthCostText.textContent=healthCost;
-  speedCostText.textContent=speedCost;
+  levelText.textContent=level;
+  scoreText.textContent=score;
+  streakText.textContent=streak;
+  timeText.textContent=time;
+  wordsDoneText.textContent=wordsDone;
 }
 
-function rect(x,y,w,h,color){
-  ctx.fillStyle=color;
-  ctx.fillRect(x,y,w,h);
-}
-
-function circle(x,y,r,color){
-  ctx.fillStyle=color;
-  ctx.beginPath();
-  ctx.arc(x,y,r,0,Math.PI*2);
-  ctx.fill();
-}
-
-function drawGrid(){
-  rect(0,0,canvas.width,canvas.height,"#182033");
-
-  ctx.strokeStyle="rgba(255,255,255,.06)";
-  ctx.lineWidth=1;
-
-  for(let x=0;x<canvas.width;x+=48){
-    ctx.beginPath();
-    ctx.moveTo(x,0);
-    ctx.lineTo(x,canvas.height);
-    ctx.stroke();
-  }
-
-  for(let y=0;y<canvas.height;y+=48){
-    ctx.beginPath();
-    ctx.moveTo(0,y);
-    ctx.lineTo(canvas.width,y);
-    ctx.stroke();
-  }
-
-  rect(24,24,canvas.width-48,canvas.height-48,"rgba(15,23,42,.55)");
-
-  for(const o of obstacles){
-    rect(o.x,o.y,o.w,o.h,"#334155");
-    rect(o.x,o.y,o.w,6,"#64748b");
-  }
-}
-
-function drawPlayer(){
-  if(attackTimer>8){
-    ctx.strokeStyle="#facc15";
-    ctx.lineWidth=14;
-    ctx.lineCap="round";
-    ctx.beginPath();
-    ctx.moveTo(player.x,player.y);
-    ctx.lineTo(player.x+player.facingX*76,player.y+player.facingY*76);
-    ctx.stroke();
-    ctx.lineCap="butt";
-  }
-
-  circle(player.x,player.y,player.r,dashTimer>0?"#164e63":"#0f172a");
-  circle(player.x+player.facingX*6,player.y+player.facingY*6,6,"#38bdf8");
-
-  const hpW=54;
-  rect(player.x-hpW/2,player.y-player.r-18,hpW,6,"#991b1b");
-  rect(player.x-hpW/2,player.y-player.r-18,hpW*(player.hp/player.maxHp),6,"#22c55e");
-}
-
-function drawEnemies(){
-  for(const e of enemies){
-    let color="#7c3aed";
-
-    if(e.boss)color="#111827";
-    if(e.fast)color="#0891b2";
-    if(e.tank)color="#c2410c";
-    if(e.hit>0)color="#facc15";
-
-    circle(e.x,e.y,e.r,color);
-
-    if(e.boss){
-      circle(e.x,e.y,18,"#a855f7");
-    }
-
-    const hpW=e.r*2;
-    rect(e.x-hpW/2,e.y-e.r-13,hpW,5,"#7f1d1d");
-    rect(e.x-hpW/2,e.y-e.r-13,hpW*(e.hp/e.maxHp),5,"#ef4444");
-  }
-}
-
-function drawCoins(){
-  for(const c of coinsOnGround){
-    circle(c.x,c.y,c.r,"#facc15");
-    circle(c.x-3,c.y-3,3,"#fff7ad");
-  }
-}
-
-function drawEffects(){
-  for(const p of particles){
-    ctx.globalAlpha=Math.max(0,p.life/50);
-    circle(p.x,p.y,3,p.color);
-    ctx.globalAlpha=1;
-  }
-
-  ctx.font="bold 16px Arial";
-  ctx.textAlign="center";
-
-  for(const t of damageTexts){
-    ctx.globalAlpha=Math.max(0,t.life/45);
-    ctx.fillStyle=t.color;
-    ctx.fillText(t.text,t.x,t.y);
-    ctx.globalAlpha=1;
-  }
-
-  ctx.textAlign="left";
-}
-
-function drawText(){
-  if(message){
-    rect(250,18,460,42,"rgba(2,6,23,.72)");
-    ctx.fillStyle="white";
-    ctx.font="bold 18px Arial";
-    ctx.textAlign="center";
-    ctx.fillText(message,480,45);
-    ctx.textAlign="left";
-  }
-
-  if(shopOpen){
-    rect(0,0,canvas.width,canvas.height,"rgba(2,6,23,.42)");
-    ctx.fillStyle="white";
-    ctx.font="bold 34px Arial";
-    ctx.textAlign="center";
-    ctx.fillText("SHOP OPEN",480,245);
-    ctx.font="18px Arial";
-    ctx.fillText("Click a shop button or press 1, 2, 3, 4",480,280);
-    ctx.textAlign="left";
-  }
-
-  if(gameOver){
-    rect(0,0,canvas.width,canvas.height,"rgba(2,6,23,.76)");
-    ctx.fillStyle="white";
-    ctx.font="bold 46px Arial";
-    ctx.textAlign="center";
-    ctx.fillText("GAME OVER",480,240);
-    ctx.font="22px Arial";
-    ctx.fillText("Press R to restart and keep upgrades",480,282);
-    ctx.textAlign="left";
-  }
-}
-
-function draw(){
-  ctx.save();
-
-  if(shake>1){
-    ctx.translate((Math.random()-.5)*shake,(Math.random()-.5)*shake);
-  }
-
-  drawGrid();
-  drawCoins();
-  drawEnemies();
-  drawPlayer();
-  drawEffects();
-  drawText();
-
-  ctx.restore();
-}
-
-function loop(){
-  update();
-  draw();
-  requestAnimationFrame(loop);
-}
-
-fullReset();
-loop();
+nextWord();
+updateHud();
 </script>
 </body>
 </html>
