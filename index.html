@@ -121,14 +121,13 @@ width:0%;
 background:#22c55e;
 transition:.2s;
 }
-
 </style>
 </head>
 
 <body>
 
 <h1>Keyboard Quest Ultimate</h1>
-<p>All Elementary School Words • Grade Levels • No Repeat Spam</p>
+<p>All Elementary School Words • No Repeat Spam • 3 Second Penalty</p>
 
 <div class="hud">
 <div>Grade: <span id="gradeText">K</span></div>
@@ -191,63 +190,41 @@ const gradeWords={
 
 k:[
 "cat","dog","sun","run","big","red","blue","hat","fish","jump",
-"tree","book","cake","milk","frog","star","ball","play","home","bird",
-"baby","apple","bed","car","duck","egg","feet","green","hand","ice",
-"jam","kite","lion","moon","nest","orange","pig","queen","rain","sock",
-"toy","umbrella","van","water","box","yellow","zebra","happy","sad","yes"
+"tree","book","cake","milk","frog","star","ball","play","home","bird"
 ],
 
 1:[
 "school","rabbit","yellow","purple","family","rocket","flower","planet","friend","winter",
-"summer","button","garden","turtle","basket","monster","kitchen","teacher","spelling","music",
-"animal","before","because","between","children","different","favorite","morning","picture","people",
-"sentence","station","under","window","without","wonder","blanket","camping","dolphin","forest",
-"guitar","helmet","island","jungle","kitten","lemon","magnet","napkin","ocean","pillow"
+"summer","button","garden","turtle","basket","monster","teacher","spelling","animal","window"
 ],
 
 2:[
 "adventure","beautiful","birthday","chocolate","dangerous","elephant","exercise","favorite","firefighter","grandmother",
-"hamburger","important","invisible","knowledge","language","mountain","neighborhood","opposite","pineapple","question",
-"remember","sandwich","tomorrow","umbrella","vacation","whisper","yesterday","backpack","cafeteria","delicious",
-"electric","fantastic","gigantic","hospital","internet","kangaroo","laughter","mystery","notebook","outside",
-"playground","rainstorm","scissors","telephone","understand","vegetable","waterfall","xylophone","yourself","zookeeper"
+"hamburger","important","invisible","knowledge","language","mountain","neighborhood","pineapple","question","remember"
 ],
 
 3:[
 "accident","alphabet","audience","calculator","celebration","community","construction","conversation","dictionary","education",
-"environment","experiment","friendship","government","imagination","information","invention","mathematics","newspaper","opportunity",
-"organization","paragraph","population","president","pronunciation","relationship","restaurant","scientist","temperature","transportation",
-"understanding","vacation","volunteer","wonderful","adjective","brilliant","courageous","discovery","excellent","favorite",
-"generation","headquarters","impossible","journalist","kindergarten","lightning","microscope","necessary","orchestra","passenger"
+"environment","experiment","friendship","government","imagination","information","invention","mathematics","paragraph","scientist"
 ],
 
 4:[
 "architecture","characteristic","communication","congratulations","counterproductive","determination","disappointment","electromagnetic","encyclopedia","extraordinary",
-"identification","intercontinental","interpretation","investigation","miscalculation","miscommunication","multiplication","organization","perpendicular","philosopher",
-"photosynthesis","qualification","questionnaire","recommendation","representation","responsibility","substitution","transformation","transportation","unbelievable",
-"underestimate","unpredictable","bioluminescence","circumference","configuration","demonstration","environmentalist","grandfatherly","hyperactivity","independent",
-"interchangeable","meteorologist","microbiology","microprocessor","misbehavior","misinterpretation","neighborhood","parallelogram","pharmaceutical","rehabilitation"
+"identification","intercontinental","interpretation","investigation","miscalculation","miscommunication","multiplication","organization","perpendicular","philosopher"
 ],
 
 5:[
 "counterattack","counterproductive","encyclopedic","experimentation","interrogation","mispronounced","organizational","pronunciation","rehabilitation","revolutionary",
-"transcontinental","trigonometry","vocabulary","civilization","classification","complicated","configuration","contradiction","demonstration","disagreement",
-"electromagnetic","encyclopedia","extraordinary","headquarters","identification","investigator","mathematical","microbiology","microscopic","miscommunication",
-"multiplication","opportunity","pharmaceutical","photosynthesis","possibility","questionnaire","relationship","representation","responsibility","substitution",
-"temperature","transportation","understanding","university","adventure","architecture","celebration","construction","environment","investigation"
-]
+"transcontinental","trigonometry","vocabulary","civilization","classification","complicated","configuration","contradiction","demonstration","disagreement"
+],
 
-  6:[
+6:[
 "abbreviation","accomplishment","acknowledgment","administration","archaeologist","biodegradable","catastrophe","circumference","collaboration","communication",
 "comprehension","conservation","constitutional","controversial","coordination","declaration","demonstration","determination","discrimination","electromagnetic",
 "encyclopedia","entrepreneur","environmentalist","extraordinary","fascinating","fundamental","geographical","governmental","heterogeneous","hypothesis",
 "identification","illustration","imagination","implementation","inconvenience","independence","individuality","industrialization","information","interpretation",
 "investigation","journalism","knowledgeable","mathematical","microscope","misinterpretation","multiplication","neighborhood","observatory","opportunity",
-"organization","parallelogram","participation","perpendicular","pharmaceutical","photosynthesis","planetarium","possibility","pronunciation","questionnaire",
-"recommendation","rehabilitation","representation","responsibility","simultaneous","substitution","temperature","transcontinental","transportation","trigonometry",
-"underestimate","understanding","unpredictable","vocabulary","volunteerism","withdrawal","xylophonist","youthfulness","zoologist","architecture",
-"bioluminescence","classification","configuration","counterproductive","experimentation","headquarters","interchangeable","microbiology","microprocessor","rehabilitation",
-"revolutionary","transformation","unbelievable","visualization","counterattack","demonstration","encyclopedic","grandfatherly","hyperactivity","microscopic"
+"organization","parallelogram","participation","perpendicular","pharmaceutical","photosynthesis","planetarium","possibility","pronunciation","questionnaire"
 ]
 
 };
@@ -276,9 +253,8 @@ g==="1"?"1st":
 g==="2"?"2nd":
 g==="3"?"3rd":
 g==="4"?"4th":
-g==="5"?"5th":  
-g==="6"?"6th":  
-"K";
+g==="5"?"5th":
+"6th";
 
 shuffled=[];
 
@@ -431,7 +407,7 @@ const percent=Math.min(100,(wordsDone%10)*10);
 
 bar.style.width=percent+"%";
 
-if(percent===0)bar.style.width="100%";
+if(percent===0) bar.style.width="100%";
 
 setTimeout(function(){
 
