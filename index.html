@@ -127,7 +127,7 @@ transition:.2s;
 <body>
 
 <h1>Keyboard Quest Ultimate</h1>
-<p>All Elementary School Words • No Repeat Spam • 3 Second Penalty</p>
+<p>Longer words = more points • Wrong answer = -3 seconds</p>
 
 <div class="hud">
 <div>Grade: <span id="gradeText">K</span></div>
@@ -222,9 +222,7 @@ k:[
 "abbreviation","accomplishment","acknowledgment","administration","archaeologist","biodegradable","catastrophe","circumference","collaboration","communication",
 "comprehension","conservation","constitutional","controversial","coordination","declaration","demonstration","determination","discrimination","electromagnetic",
 "encyclopedia","entrepreneur","environmentalist","extraordinary","fascinating","fundamental","geographical","governmental","heterogeneous","hypothesis",
-"identification","illustration","imagination","implementation","inconvenience","independence","individuality","industrialization","information","interpretation",
-"investigation","journalism","knowledgeable","mathematical","microscope","misinterpretation","multiplication","neighborhood","observatory","opportunity",
-"organization","parallelogram","participation","perpendicular","pharmaceutical","photosynthesis","planetarium","possibility","pronunciation","questionnaire"
+"identification","illustration","imagination","implementation","inconvenience","independence","individuality","industrialization","information","interpretation"
 ]
 
 };
@@ -353,7 +351,17 @@ feedback.style.color="#2563eb";
 
 function correct(){
 
-score+=10+streak;
+let bonus = {
+  k:1,
+  1:2,
+  2:3,
+  3:5,
+  4:7,
+  5:10,
+  6:15
+};
+
+score += currentWord.length + streak + bonus[grade];
 
 streak++;
 
