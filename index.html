@@ -3,150 +3,135 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Keyboard Quest</title>
+<title>Keyboard Quest Ultimate</title>
 
 <style>
 *{box-sizing:border-box}
 
 body{
 margin:0;
-background:#f0f9ff;
-color:#0f172a;
+background:#eef6ff;
+font-family:Arial,sans-serif;
 text-align:center;
-font-family:Arial,sans-serif
+color:#0f172a;
 }
 
 h1{
-margin:16px 0 6px;
-font-size:44px;
-color:#2563eb
+font-size:48px;
+margin:16px 0 8px;
+color:#2563eb;
 }
 
 p{
+color:#475569;
 margin:6px;
-color:#475569
 }
 
 .hud{
 display:flex;
 justify-content:center;
-gap:14px;
+gap:12px;
 flex-wrap:wrap;
-margin:12px 0;
-font-size:18px
+margin:12px;
 }
 
 .hud div{
 background:white;
-border:2px solid #bfdbfe;
+padding:10px 14px;
 border-radius:12px;
-padding:10px 14px
-}
-
-.hud span{
-color:#f59e0b;
-font-weight:bold
+border:2px solid #bfdbfe;
+font-weight:bold;
 }
 
 .game{
-width:min(920px,95vw);
-margin:12px auto;
-padding:18px;
+width:min(950px,95vw);
+margin:20px auto;
 background:white;
+padding:20px;
+border-radius:20px;
 border:4px solid #93c5fd;
-border-radius:18px;
-box-shadow:0 10px 30px rgba(37,99,235,.18)
+box-shadow:0 10px 30px rgba(37,99,235,.2);
 }
 
 .word{
-font-size:56px;
+font-size:54px;
 font-weight:bold;
+margin:24px 0;
 color:#16a34a;
-margin:20px 0;
-word-break:break-word
+word-break:break-word;
 }
 
 input{
 font-size:32px;
+padding:14px;
+width:min(550px,90%);
 text-align:center;
-padding:12px;
-width:min(520px,90%);
-border:4px solid #93c5fd;
 border-radius:14px;
-outline:none
+border:4px solid #93c5fd;
+outline:none;
 }
 
 input:focus{
-border-color:#2563eb
+border-color:#2563eb;
 }
 
 button{
 margin:8px;
 padding:12px 18px;
-border:0;
+border:none;
 border-radius:12px;
 background:#2563eb;
 color:white;
-font-weight:bold;
 font-size:16px;
-cursor:pointer
+font-weight:bold;
+cursor:pointer;
 }
 
 button:hover{
-background:#1d4ed8
+background:#1d4ed8;
 }
 
-.options{
+.gradeButtons{
 display:flex;
 justify-content:center;
 gap:10px;
 flex-wrap:wrap;
-margin:10px
-}
-
-.options button{
-background:#f59e0b
-}
-
-.options button:hover{
-background:#d97706
+margin:14px;
 }
 
 .feedback{
 font-size:24px;
 font-weight:bold;
+margin:12px;
 min-height:34px;
-margin:12px
 }
 
 .progress{
-height:22px;
-width:min(640px,90%);
-margin:14px auto;
+width:min(700px,90%);
+height:24px;
+margin:16px auto;
 background:#dbeafe;
 border-radius:999px;
-overflow:hidden
+overflow:hidden;
 }
 
 .bar{
 height:100%;
-width:0;
+width:0%;
 background:#22c55e;
-transition:.2s
+transition:.2s;
 }
 
-.big{
-font-size:20px
-}
 </style>
 </head>
 
 <body>
 
-<h1>Keyboard Quest</h1>
-<p>Type the word. Wrong answer = -3 seconds.</p>
+<h1>Keyboard Quest Ultimate</h1>
+<p>All Elementary School Words • Grade Levels • No Repeat Spam</p>
 
 <div class="hud">
+<div>Grade: <span id="gradeText">K</span></div>
 <div>Level: <span id="level">1</span></div>
 <div>Score: <span id="score">0</span></div>
 <div>Streak: <span id="streak">0</span></div>
@@ -156,13 +141,14 @@ font-size:20px
 
 <div class="game">
 
-<div class="options">
-<button onclick="setMode('easy')">Easy</button>
-<button onclick="setMode('medium')">Medium</button>
-<button onclick="setMode('hard')">Challenge</button>
+<div class="gradeButtons">
+<button onclick="setGrade('k')">K</button>
+<button onclick="setGrade('1')">1st</button>
+<button onclick="setGrade('2')">2nd</button>
+<button onclick="setGrade('3')">3rd</button>
+<button onclick="setGrade('4')">4th</button>
+<button onclick="setGrade('5')">5th</button>
 </div>
-
-<p class="big">Mode: <span id="mode">Easy</span></p>
 
 <div class="word" id="word">cat</div>
 
@@ -196,47 +182,63 @@ const scoreText=document.getElementById("score");
 const streakText=document.getElementById("streak");
 const timeText=document.getElementById("time");
 const wordsDoneText=document.getElementById("wordsDone");
+const gradeText=document.getElementById("gradeText");
 
 const bar=document.getElementById("bar");
-const modeText=document.getElementById("mode");
 
-const easy=[
-"cat","dog","sun","run","big","red","blue","jump","fish","bird",
-"book","tree","star","ball","cake","milk","home","play","frog","hat"
-];
+const gradeWords={
 
-const medium=[
-"apple","happy","school","pencil","yellow","purple","rabbit","planet","window","garden",
-"friend","family","summer","winter","button","rocket","cookie","flower","monkey","turtle"
-];
+k:[
+"cat","dog","sun","run","big","red","blue","hat","fish","jump",
+"tree","book","cake","milk","frog","star","ball","play","home","bird",
+"baby","apple","bed","car","duck","egg","feet","green","hand","ice",
+"jam","kite","lion","moon","nest","orange","pig","queen","rain","sock",
+"toy","umbrella","van","water","box","yellow","zebra","happy","sad","yes"
+],
 
-const hard=[
-"perpendicular","photosynthesis","misinterpretation","characteristic","electromagnetic",
-"responsibility","miscommunication","intercontinental","counterproductive","environmentalist",
-"encyclopedia","mathematics","vocabulary","architecture","extraordinary",
-"microbiology","transportation","international","communication","transformation",
-"disappointment","understanding","relationship","championship","encyclopedic",
-"investigation","pronunciation","determination","multiplication","civilization",
-"identification","representation","experimentation","classification","congratulations",
-"meteorologist","recommendation","transportable","miscalculation","rehabilitation",
-"interpretation","substitution","unbelievable","grandfatherly","misunderstood",
-"counterattack","organizational","extraordinary","mispronounced","encyclopedic",
-"environmental","pharmaceutical","microprocessor","interrogation","qualification",
-"misbehavior","revolutionary","unpredictable","headquarters","configuration",
-"contradiction","uncomfortable","demonstration","refrigerator","opportunity",
-"complicated","temperature","consequence","rearrangement","communication",
-"discovery","investigator","mathematical","encyclopedia","pronunciation",
-"responsible","multiplication","civilization","extraordinary","transportation",
-"background","breakthrough","conversation","construction","independent",
-"possibility","questionnaire","relationship","championship","disagreement",
-"university","underestimate","miscalculation","intermediate","extraordinary",
-"configuration","encyclopedic","philosopher","neighborhood","misinterpretation",
-"transcontinental","bioluminescence","counterproductive","electromagnetic","photosynthesis",
-"hyperactivity","microscopic","rehabilitation","transportation","circumference",
-"parallelogram","trigonometry","interchangeable","responsibility","miscommunication"
-];
+1:[
+"school","rabbit","yellow","purple","family","rocket","flower","planet","friend","winter",
+"summer","button","garden","turtle","basket","monster","kitchen","teacher","spelling","music",
+"animal","before","because","between","children","different","favorite","morning","picture","people",
+"sentence","station","under","window","without","wonder","blanket","camping","dolphin","forest",
+"guitar","helmet","island","jungle","kitten","lemon","magnet","napkin","ocean","pillow"
+],
 
-let mode="easy";
+2:[
+"adventure","beautiful","birthday","chocolate","dangerous","elephant","exercise","favorite","firefighter","grandmother",
+"hamburger","important","invisible","knowledge","language","mountain","neighborhood","opposite","pineapple","question",
+"remember","sandwich","tomorrow","umbrella","vacation","whisper","yesterday","backpack","cafeteria","delicious",
+"electric","fantastic","gigantic","hospital","internet","kangaroo","laughter","mystery","notebook","outside",
+"playground","rainstorm","scissors","telephone","understand","vegetable","waterfall","xylophone","yourself","zookeeper"
+],
+
+3:[
+"accident","alphabet","audience","calculator","celebration","community","construction","conversation","dictionary","education",
+"environment","experiment","friendship","government","imagination","information","invention","mathematics","newspaper","opportunity",
+"organization","paragraph","population","president","pronunciation","relationship","restaurant","scientist","temperature","transportation",
+"understanding","vacation","volunteer","wonderful","adjective","brilliant","courageous","discovery","excellent","favorite",
+"generation","headquarters","impossible","journalist","kindergarten","lightning","microscope","necessary","orchestra","passenger"
+],
+
+4:[
+"architecture","characteristic","communication","congratulations","counterproductive","determination","disappointment","electromagnetic","encyclopedia","extraordinary",
+"identification","intercontinental","interpretation","investigation","miscalculation","miscommunication","multiplication","organization","perpendicular","philosopher",
+"photosynthesis","qualification","questionnaire","recommendation","representation","responsibility","substitution","transformation","transportation","unbelievable",
+"underestimate","unpredictable","bioluminescence","circumference","configuration","demonstration","environmentalist","grandfatherly","hyperactivity","independent",
+"interchangeable","meteorologist","microbiology","microprocessor","misbehavior","misinterpretation","neighborhood","parallelogram","pharmaceutical","rehabilitation"
+],
+
+5:[
+"counterattack","counterproductive","encyclopedic","experimentation","interrogation","mispronounced","organizational","pronunciation","rehabilitation","revolutionary",
+"transcontinental","trigonometry","vocabulary","civilization","classification","complicated","configuration","contradiction","demonstration","disagreement",
+"electromagnetic","encyclopedia","extraordinary","headquarters","identification","investigator","mathematical","microbiology","microscopic","miscommunication",
+"multiplication","opportunity","pharmaceutical","photosynthesis","possibility","questionnaire","relationship","representation","responsibility","substitution",
+"temperature","transportation","understanding","university","adventure","architecture","celebration","construction","environment","investigation"
+]
+
+};
+
+let grade="k";
 let currentWord="cat";
 
 let score=0;
@@ -250,16 +252,17 @@ let timer=null;
 
 let shuffled=[];
 
-function setMode(newMode){
+function setGrade(g){
 
-mode=newMode;
+grade=g;
 
-modeText.textContent=
-newMode==="easy"
-?"Easy"
-:newMode==="medium"
-?"Medium"
-:"Challenge";
+gradeText.textContent=
+g==="k"?"K":
+g==="1"?"1st":
+g==="2"?"2nd":
+g==="3"?"3rd":
+g==="4"?"4th":
+"5th";
 
 shuffled=[];
 
@@ -269,12 +272,7 @@ answer.focus();
 }
 
 function wordList(){
-
-if(mode==="easy") return easy;
-
-if(mode==="medium") return medium;
-
-return hard;
+return gradeWords[grade];
 }
 
 function shuffle(array){
@@ -332,7 +330,7 @@ clearInterval(timer);
 
 timer=setInterval(function(){
 
-if(!playing) return;
+if(!playing)return;
 
 time--;
 
@@ -417,7 +415,7 @@ const percent=Math.min(100,(wordsDone%10)*10);
 
 bar.style.width=percent+"%";
 
-if(percent===0) bar.style.width="100%";
+if(percent===0)bar.style.width="100%";
 
 setTimeout(function(){
 
@@ -455,7 +453,7 @@ wrong();
 
 answer.addEventListener("input",function(){
 
-if(!playing) return;
+if(!playing)return;
 
 const typed=answer.value.trim().toLowerCase();
 
