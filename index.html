@@ -4,246 +4,485 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Keyboard Quest</title>
+
 <style>
 *{box-sizing:border-box}
-body{margin:0;background:#f0f9ff;color:#0f172a;text-align:center;font-family:Arial,sans-serif}
-h1{margin:16px 0 6px;font-size:44px;color:#2563eb}
-p{margin:6px;color:#475569}
-.hud{display:flex;justify-content:center;gap:14px;flex-wrap:wrap;margin:12px 0;font-size:18px}
-.hud div{background:white;border:2px solid #bfdbfe;border-radius:12px;padding:10px 14px}
-.hud span{color:#f59e0b;font-weight:bold}
-.game{width:min(920px,95vw);margin:12px auto;padding:18px;background:white;border:4px solid #93c5fd;border-radius:18px;box-shadow:0 10px 30px rgba(37,99,235,.18)}
-.word{font-size:56px;font-weight:bold;color:#16a34a;margin:20px 0}
-input{font-size:32px;text-align:center;padding:12px;width:min(520px,90%);border:4px solid #93c5fd;border-radius:14px;outline:none}
-input:focus{border-color:#2563eb}
-button{margin:8px;padding:12px 18px;border:0;border-radius:12px;background:#2563eb;color:white;font-weight:bold;font-size:16px;cursor:pointer}
-button:hover{background:#1d4ed8}
-.options{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin:10px}
-.options button{background:#f59e0b}
-.options button:hover{background:#d97706}
-.feedback{font-size:24px;font-weight:bold;min-height:34px;margin:12px}
-.progress{height:22px;width:min(640px,90%);margin:14px auto;background:#dbeafe;border-radius:999px;overflow:hidden}
-.bar{height:100%;width:0;background:#22c55e;transition:.2s}
-.big{font-size:20px}
+
+body{
+margin:0;
+background:#f0f9ff;
+color:#0f172a;
+text-align:center;
+font-family:Arial,sans-serif
+}
+
+h1{
+margin:16px 0 6px;
+font-size:44px;
+color:#2563eb
+}
+
+p{
+margin:6px;
+color:#475569
+}
+
+.hud{
+display:flex;
+justify-content:center;
+gap:14px;
+flex-wrap:wrap;
+margin:12px 0;
+font-size:18px
+}
+
+.hud div{
+background:white;
+border:2px solid #bfdbfe;
+border-radius:12px;
+padding:10px 14px
+}
+
+.hud span{
+color:#f59e0b;
+font-weight:bold
+}
+
+.game{
+width:min(920px,95vw);
+margin:12px auto;
+padding:18px;
+background:white;
+border:4px solid #93c5fd;
+border-radius:18px;
+box-shadow:0 10px 30px rgba(37,99,235,.18)
+}
+
+.word{
+font-size:56px;
+font-weight:bold;
+color:#16a34a;
+margin:20px 0;
+word-break:break-word
+}
+
+input{
+font-size:32px;
+text-align:center;
+padding:12px;
+width:min(520px,90%);
+border:4px solid #93c5fd;
+border-radius:14px;
+outline:none
+}
+
+input:focus{
+border-color:#2563eb
+}
+
+button{
+margin:8px;
+padding:12px 18px;
+border:0;
+border-radius:12px;
+background:#2563eb;
+color:white;
+font-weight:bold;
+font-size:16px;
+cursor:pointer
+}
+
+button:hover{
+background:#1d4ed8
+}
+
+.options{
+display:flex;
+justify-content:center;
+gap:10px;
+flex-wrap:wrap;
+margin:10px
+}
+
+.options button{
+background:#f59e0b
+}
+
+.options button:hover{
+background:#d97706
+}
+
+.feedback{
+font-size:24px;
+font-weight:bold;
+min-height:34px;
+margin:12px
+}
+
+.progress{
+height:22px;
+width:min(640px,90%);
+margin:14px auto;
+background:#dbeafe;
+border-radius:999px;
+overflow:hidden
+}
+
+.bar{
+height:100%;
+width:0;
+background:#22c55e;
+transition:.2s
+}
+
+.big{
+font-size:20px
+}
 </style>
 </head>
+
 <body>
 
 <h1>Keyboard Quest</h1>
-<p>Type the word you see. Wrong answer = -3 seconds.</p>
+<p>Type the word. Wrong answer = -3 seconds.</p>
 
 <div class="hud">
-  <div>Level: <span id="level">1</span></div>
-  <div>Score: <span id="score">0</span></div>
-  <div>Streak: <span id="streak">0</span></div>
-  <div>Time: <span id="time">60</span></div>
-  <div>Words: <span id="wordsDone">0</span></div>
+<div>Level: <span id="level">1</span></div>
+<div>Score: <span id="score">0</span></div>
+<div>Streak: <span id="streak">0</span></div>
+<div>Time: <span id="time">60</span></div>
+<div>Words: <span id="wordsDone">0</span></div>
 </div>
 
 <div class="game">
-  <div class="options">
-    <button onclick="setMode('easy')">Easy</button>
-    <button onclick="setMode('medium')">Medium</button>
-    <button onclick="setMode('hard')">Challenge</button>
-  </div>
 
-  <p class="big">Mode: <span id="mode">Easy</span></p>
-  <div class="word" id="word">cat</div>
-  <input id="answer" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="type here">
-  <div class="feedback" id="feedback"></div>
+<div class="options">
+<button onclick="setMode('easy')">Easy</button>
+<button onclick="setMode('medium')">Medium</button>
+<button onclick="setMode('hard')">Challenge</button>
+</div>
 
-  <div class="progress">
-    <div class="bar" id="bar"></div>
-  </div>
+<p class="big">Mode: <span id="mode">Easy</span></p>
 
-  <button onclick="startGame()">Start / Restart</button>
+<div class="word" id="word">cat</div>
+
+<input
+id="answer"
+autocomplete="off"
+autocorrect="off"
+autocapitalize="off"
+spellcheck="false"
+placeholder="type here"
+>
+
+<div class="feedback" id="feedback"></div>
+
+<div class="progress">
+<div class="bar" id="bar"></div>
+</div>
+
+<button onclick="startGame()">Start / Restart</button>
+
 </div>
 
 <script>
+
 const wordBox=document.getElementById("word");
 const answer=document.getElementById("answer");
 const feedback=document.getElementById("feedback");
+
 const levelText=document.getElementById("level");
 const scoreText=document.getElementById("score");
 const streakText=document.getElementById("streak");
 const timeText=document.getElementById("time");
 const wordsDoneText=document.getElementById("wordsDone");
+
 const bar=document.getElementById("bar");
 const modeText=document.getElementById("mode");
 
 const easy=[
-  "cat","dog","sun","run","big","red","blue","jump","fish","bird",
-  "book","tree","star","ball","cake","milk","home","play","frog","hat"
+"cat","dog","sun","run","big","red","blue","jump","fish","bird",
+"book","tree","star","ball","cake","milk","home","play","frog","hat"
 ];
 
 const medium=[
-  "apple","happy","school","pencil","yellow","purple","rabbit","planet","window","garden",
-  "friend","family","summer","winter","button","rocket","cookie","flower","monkey","turtle"
+"apple","happy","school","pencil","yellow","purple","rabbit","planet","window","garden",
+"friend","family","summer","winter","button","rocket","cookie","flower","monkey","turtle"
 ];
 
 const hard=[
-  "elephant","computer","keyboard","library","dinosaur","sandwich","backpack","mountain","rainbow","football",
-  "butterfly","playground","chocolate","adventure","treasure","sentence","practice","question","favorite","excellent"
+"perpendicular","photosynthesis","misinterpretation","characteristic","electromagnetic",
+"responsibility","miscommunication","intercontinental","counterproductive","environmentalist",
+"encyclopedia","mathematics","vocabulary","architecture","extraordinary",
+"microbiology","transportation","international","communication","transformation",
+"disappointment","understanding","relationship","championship","encyclopedic",
+"investigation","pronunciation","determination","multiplication","civilization",
+"identification","representation","experimentation","classification","congratulations",
+"meteorologist","recommendation","transportable","miscalculation","rehabilitation",
+"interpretation","substitution","unbelievable","grandfatherly","misunderstood",
+"counterattack","organizational","extraordinary","mispronounced","encyclopedic",
+"environmental","pharmaceutical","microprocessor","interrogation","qualification",
+"misbehavior","revolutionary","unpredictable","headquarters","configuration",
+"contradiction","uncomfortable","demonstration","refrigerator","opportunity",
+"complicated","temperature","consequence","rearrangement","communication",
+"discovery","investigator","mathematical","encyclopedia","pronunciation",
+"responsible","multiplication","civilization","extraordinary","transportation",
+"background","breakthrough","conversation","construction","independent",
+"possibility","questionnaire","relationship","championship","disagreement",
+"university","underestimate","miscalculation","intermediate","extraordinary",
+"configuration","encyclopedic","philosopher","neighborhood","misinterpretation",
+"transcontinental","bioluminescence","counterproductive","electromagnetic","photosynthesis",
+"hyperactivity","microscopic","rehabilitation","transportation","circumference",
+"parallelogram","trigonometry","interchangeable","responsibility","miscommunication"
 ];
 
 let mode="easy";
 let currentWord="cat";
+
 let score=0;
 let streak=0;
 let level=1;
 let wordsDone=0;
 let time=60;
+
 let playing=false;
 let timer=null;
+
 let shuffled=[];
 
 function setMode(newMode){
-  mode=newMode;
-  modeText.textContent=newMode==="easy"?"Easy":newMode==="medium"?"Medium":"Challenge";
-  shuffled=[];
-  nextWord();
-  answer.focus();
+
+mode=newMode;
+
+modeText.textContent=
+newMode==="easy"
+?"Easy"
+:newMode==="medium"
+?"Medium"
+:"Challenge";
+
+shuffled=[];
+
+nextWord();
+
+answer.focus();
 }
 
 function wordList(){
-  if(mode==="easy")return easy;
-  if(mode==="medium")return medium;
-  return hard;
+
+if(mode==="easy") return easy;
+
+if(mode==="medium") return medium;
+
+return hard;
 }
 
 function shuffle(array){
-  for(let i=array.length-1;i>0;i--){
-    let j=Math.floor(Math.random()*(i+1));
-    [array[i],array[j]]=[array[j],array[i]];
-  }
+
+for(let i=array.length-1;i>0;i--){
+
+let j=Math.floor(Math.random()*(i+1));
+
+[array[i],array[j]]=[array[j],array[i]];
+}
 }
 
 function pickWord(){
-  if(shuffled.length===0){
-    shuffled=[...wordList()];
-    shuffle(shuffled);
-  }
-  return shuffled.pop();
+
+if(shuffled.length===0){
+
+shuffled=[...wordList()];
+
+shuffle(shuffled);
+}
+
+return shuffled.pop();
 }
 
 function nextWord(){
-  currentWord=pickWord();
-  wordBox.textContent=currentWord;
-  answer.value="";
+
+currentWord=pickWord();
+
+wordBox.textContent=currentWord;
+
+answer.value="";
 }
 
 function startGame(){
-  score=0;
-  streak=0;
-  level=1;
-  wordsDone=0;
-  time=60;
-  playing=true;
-  shuffled=[];
-  feedback.textContent="";
-  updateHud();
-  nextWord();
-  answer.focus();
 
-  clearInterval(timer);
-  timer=setInterval(function(){
-    if(!playing)return;
-    time--;
-    updateHud();
+score=0;
+streak=0;
+level=1;
+wordsDone=0;
+time=60;
 
-    if(time<=0){
-      endGame();
-    }
-  },1000);
+playing=true;
+
+shuffled=[];
+
+feedback.textContent="";
+
+updateHud();
+
+nextWord();
+
+answer.focus();
+
+clearInterval(timer);
+
+timer=setInterval(function(){
+
+if(!playing) return;
+
+time--;
+
+updateHud();
+
+if(time<=0){
+
+endGame();
+}
+
+},1000);
 }
 
 function endGame(){
-  playing=false;
-  clearInterval(timer);
-  time=0;
-  updateHud();
-  feedback.textContent="Time is up! Final score: "+score;
-  feedback.style.color="#2563eb";
+
+playing=false;
+
+clearInterval(timer);
+
+time=0;
+
+updateHud();
+
+feedback.textContent="Time is up! Final score: "+score;
+
+feedback.style.color="#2563eb";
 }
 
 function correct(){
-  score+=10+streak;
-  streak++;
-  wordsDone++;
 
-  if(wordsDone%10===0){
-    level++;
-    feedback.textContent="Level up!";
-  }else{
-    feedback.textContent="Great job!";
-  }
+score+=10+streak;
 
-  feedback.style.color="#16a34a";
-  burstProgress();
-  nextWord();
-  updateHud();
+streak++;
+
+wordsDone++;
+
+if(wordsDone%10===0){
+
+level++;
+
+feedback.textContent="Level up!";
+
+}else{
+
+feedback.textContent="Great job!";
+}
+
+feedback.style.color="#16a34a";
+
+burstProgress();
+
+nextWord();
+
+updateHud();
 }
 
 function wrong(){
-  streak=0;
-  time=Math.max(0,time-3);
-  feedback.textContent="Wrong! -3 seconds";
-  feedback.style.color="#dc2626";
-  updateHud();
 
-  if(time<=0){
-    endGame();
-  }else{
-    answer.select();
-  }
+streak=0;
+
+time=Math.max(0,time-3);
+
+feedback.textContent="Wrong! -3 seconds";
+
+feedback.style.color="#dc2626";
+
+updateHud();
+
+if(time<=0){
+
+endGame();
+
+}else{
+
+answer.select();
+}
 }
 
 function burstProgress(){
-  const percent=Math.min(100,(wordsDone%10)*10);
-  bar.style.width=percent+"%";
-  if(percent===0)bar.style.width="100%";
-  setTimeout(function(){
-    if(wordsDone%10===0)bar.style.width="0%";
-  },250);
+
+const percent=Math.min(100,(wordsDone%10)*10);
+
+bar.style.width=percent+"%";
+
+if(percent===0) bar.style.width="100%";
+
+setTimeout(function(){
+
+if(wordsDone%10===0){
+
+bar.style.width="0%";
+}
+
+},250);
 }
 
 answer.addEventListener("keydown",function(e){
-  if(e.key==="Enter"){
-    if(!playing){
-      startGame();
-      return;
-    }
 
-    const typed=answer.value.trim().toLowerCase();
+if(e.key==="Enter"){
 
-    if(typed===currentWord.toLowerCase()){
-      correct();
-    }else{
-      wrong();
-    }
-  }
+if(!playing){
+
+startGame();
+
+return;
+}
+
+const typed=answer.value.trim().toLowerCase();
+
+if(typed===currentWord.toLowerCase()){
+
+correct();
+
+}else{
+
+wrong();
+}
+}
 });
 
 answer.addEventListener("input",function(){
-  if(!playing)return;
 
-  const typed=answer.value.trim().toLowerCase();
+if(!playing) return;
 
-  if(typed===currentWord.toLowerCase()){
-    correct();
-  }
+const typed=answer.value.trim().toLowerCase();
+
+if(typed===currentWord.toLowerCase()){
+
+correct();
+}
 });
 
 function updateHud(){
-  levelText.textContent=level;
-  scoreText.textContent=score;
-  streakText.textContent=streak;
-  timeText.textContent=time;
-  wordsDoneText.textContent=wordsDone;
+
+levelText.textContent=level;
+
+scoreText.textContent=score;
+
+streakText.textContent=streak;
+
+timeText.textContent=time;
+
+wordsDoneText.textContent=wordsDone;
 }
 
 nextWord();
+
 updateHud();
+
 </script>
+
 </body>
 </html>
