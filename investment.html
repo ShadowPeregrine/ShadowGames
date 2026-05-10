@@ -10,9 +10,8 @@
     button:hover{background:#16a34a}
     .stock{background:#1f2937;border-radius:12px;margin:10px;padding:12px}
     .price{color:#facc15;font-weight:bold}
-    .bad{color:#ef4444}
-    .good{color:#22c55e}
     input{padding:10px;border-radius:8px;border:0}
+    hr{border:1px solid #334155}
   </style>
 </head>
 <body>
@@ -37,10 +36,15 @@
 
 <div class="shop">
   <h2>Upgrades</h2>
+
   <button onclick="buyUpgrade('insider')">👀 Insider Tips - $<span id="insiderCost">500</span></button>
   <button onclick="buyUpgrade('dividend')">🏦 Dividend Machine - $<span id="dividendCost">1000</span></button>
   <button onclick="buyUpgrade('bot')">🤖 AI Trader Bot - $<span id="botCost">2500</span></button>
-  <button onclick="marketCrash()">💥 Force Market Crash</button>
+
+  <hr>
+
+  <button onclick="sellAll()">💰 Sell All Stocks</button>
+  <button onclick="buyRandom()">🎲 Random Investment</button>
 </div>
 
 <div class="leader">
@@ -117,6 +121,7 @@ function renderStocks(){
       <button onclick="buyStock(${i})">Buy 1</button>
       <button onclick="sellStock(${i})">Sell 1</button>
       <button onclick="buyMax(${i})">Buy Max</button>
+      <button onclick="sellStockAll(${i})">Sell All</button>
     `;
     box.appendChild(div);
   });
@@ -150,6 +155,33 @@ function buyMax(i){
   }
 }
 
+function sellStockAll(i){
+  let s = stocks[i];
+  if(s.owned > 0){
+    cash += s.price * s.owned;
+    s.owned = 0;
+    update();
+  }
+}
+
+function sellAll(){
+  stocks.forEach(s => {
+    cash += s.price * s.owned;
+    s.owned = 0;
+  });
+  update();
+}
+
+function buyRandom(){
+  let affordable = stocks.filter(s => cash >= s.price);
+  if(affordable.length === 0) return;
+
+  let stock = affordable[Math.floor(Math.random()*affordable.length)];
+  cash -= stock.price;
+  stock.owned++;
+  update();
+}
+
 function buyUpgrade(type){
   if(cash >= upgradeCosts[type]){
     cash -= upgradeCosts[type];
@@ -161,7 +193,7 @@ function buyUpgrade(type){
 
 function moveMarket(){
   stocks.forEach(s=>{
-    let insiderBoost = 1 - upgrades.insider * 0.01;
+    let insiderBoost = Math.max(0.3, 1 - upgrades.insider * 0.01);
     let change = (Math.random() * 2 - 1) * s.volatility * insiderBoost;
     s.price = Math.max(1, s.price * (1 + change));
   });
@@ -182,19 +214,12 @@ function randomNews(){
   update();
 }
 
-function marketCrash(){
-  stocks.forEach(s => s.price = Math.max(1, s.price * 0.5));
-  document.getElementById("newsText").innerText = "💥 You caused a market crash!";
-  update();
-}
-
 function aiBotTrade(){
   if(upgrades.bot <= 0) return;
 
   let cheapest = stocks.reduce((a,b)=>a.price<b.price?a:b);
-  let budget = upgrades.bot * 10;
 
-  if(cash >= cheapest.price && cash >= budget){
+  if(cash >= cheapest.price){
     cash -= cheapest.price;
     cheapest.owned++;
   }
@@ -259,6 +284,7 @@ function update(){
 
 setInterval(moveMarket, 1000);
 setInterval(randomNews, 10000);
+
 setInterval(()=>{
   cash += passiveIncome();
   aiBotTrade();
