@@ -2,18 +2,69 @@
 <html>
 <head>
   <title>Shadow Investments</title>
+
   <style>
-    body{margin:0;background:#07111f;color:white;font-family:Arial;text-align:center}
-    h1{font-size:44px;color:#22c55e}
-    .hud,.market,.shop,.news,.leader{background:#111827;border:3px solid #334155;border-radius:16px;margin:16px auto;padding:16px;width:min(950px,95vw)}
-    button{padding:10px 14px;margin:6px;border:0;border-radius:10px;background:#22c55e;color:#04110a;font-weight:bold;cursor:pointer}
-    button:hover{background:#16a34a}
-    .stock{background:#1f2937;border-radius:12px;margin:10px;padding:12px}
-    .price{color:#facc15;font-weight:bold}
-    input{padding:10px;border-radius:8px;border:0}
-    hr{border:1px solid #334155}
+    body{
+      margin:0;
+      background:#07111f;
+      color:white;
+      font-family:Arial;
+      text-align:center;
+    }
+
+    h1{
+      font-size:44px;
+      color:#22c55e;
+    }
+
+    .hud,.market,.shop,.news,.leader{
+      background:#111827;
+      border:3px solid #334155;
+      border-radius:16px;
+      margin:16px auto;
+      padding:16px;
+      width:min(950px,95vw);
+    }
+
+    button{
+      padding:10px 14px;
+      margin:6px;
+      border:0;
+      border-radius:10px;
+      background:#22c55e;
+      color:#04110a;
+      font-weight:bold;
+      cursor:pointer;
+    }
+
+    button:hover{
+      background:#16a34a;
+    }
+
+    .stock{
+      background:#1f2937;
+      border-radius:12px;
+      margin:10px;
+      padding:12px;
+    }
+
+    .price{
+      color:#facc15;
+      font-weight:bold;
+    }
+
+    input{
+      padding:10px;
+      border-radius:8px;
+      border:0;
+    }
+
+    hr{
+      border:1px solid #334155;
+    }
   </style>
 </head>
+
 <body>
 
 <h1>Shadow Investments 📈</h1>
@@ -35,38 +86,55 @@
 </div>
 
 <div class="shop">
+
   <h2>Upgrades</h2>
 
-  <button onclick="buyUpgrade('insider')">👀 Insider Tips - $<span id="insiderCost">500</span></button>
-  <button onclick="buyUpgrade('dividend')">🏦 Dividend Machine - $<span id="dividendCost">1000</span></button>
-  <button onclick="buyUpgrade('bot')">🤖 AI Trader Bot - $<span id="botCost">2500</span></button>
+  <button onclick="buyUpgrade('insider')">
+    👀 Insider Tips - $<span id="insiderCost">500</span>
+  </button>
+
+  <button onclick="buyUpgrade('dividend')">
+    🏦 Dividend Machine - $<span id="dividendCost">1000</span>
+  </button>
+
+  <button onclick="buyUpgrade('bot')">
+    🤖 AI Trader Bot - $<span id="botCost">2500</span>
+  </button>
 
   <hr>
 
   <button onclick="sellAll()">💰 Sell All Stocks</button>
+
   <button onclick="buyRandom()">🎲 Random Investment</button>
+
+  <button onclick="restartGame()">🔄 Restart Game</button>
+
 </div>
 
 <div class="leader">
   <h2>🏆 Local Leaderboard</h2>
+
   <input id="playerName" placeholder="Your name">
+
   <button onclick="submitScore()">Submit Net Worth</button>
+
   <ol id="leaderboard"></ol>
 </div>
 
 <script>
+
 let cash = 1000;
 
 let upgrades = {
-  insider: 0,
-  dividend: 0,
-  bot: 0
+  insider:0,
+  dividend:0,
+  bot:0
 };
 
 let upgradeCosts = {
-  insider: 500,
-  dividend: 1000,
-  bot: 2500
+  insider:500,
+  dividend:1000,
+  bot:2500
 };
 
 let stocks = [
@@ -90,144 +158,241 @@ const newsEvents = [
 ];
 
 function format(n){
+
   if(n >= 1e12) return (n/1e12).toFixed(2)+"T";
+
   if(n >= 1e9) return (n/1e9).toFixed(2)+"B";
+
   if(n >= 1e6) return (n/1e6).toFixed(2)+"M";
+
   if(n >= 1e3) return (n/1e3).toFixed(2)+"K";
+
   return Math.floor(n);
 }
 
 function netWorth(){
+
   let total = cash;
-  stocks.forEach(s => total += s.price * s.owned);
+
+  stocks.forEach(s => {
+
+    total += s.price * s.owned;
+
+  });
+
   return total;
 }
 
 function passiveIncome(){
+
   return upgrades.dividend * 10 + upgrades.bot * 25;
 }
 
 function renderStocks(){
+
   const box = document.getElementById("stocks");
+
   box.innerHTML = "";
 
   stocks.forEach((s,i)=>{
+
     let div = document.createElement("div");
+
     div.className = "stock";
+
     div.innerHTML = `
       <h3>${s.name}</h3>
-      <p>Price: $<span class="price">${format(s.price)}</span></p>
+
+      <p>
+        Price:
+        $<span class="price">${format(s.price)}</span>
+      </p>
+
       <p>Owned: ${s.owned}</p>
+
       <button onclick="buyStock(${i})">Buy 1</button>
+
       <button onclick="sellStock(${i})">Sell 1</button>
+
       <button onclick="buyMax(${i})">Buy Max</button>
+
       <button onclick="sellStockAll(${i})">Sell All</button>
     `;
+
     box.appendChild(div);
   });
 }
 
 function buyStock(i){
+
   let s = stocks[i];
+
   if(cash >= s.price){
+
     cash -= s.price;
+
     s.owned++;
+
     update();
   }
 }
 
 function sellStock(i){
+
   let s = stocks[i];
+
   if(s.owned > 0){
+
     s.owned--;
+
     cash += s.price;
+
     update();
   }
 }
 
 function buyMax(i){
+
   let s = stocks[i];
+
   let amount = Math.floor(cash / s.price);
+
   if(amount > 0){
+
     cash -= amount * s.price;
+
     s.owned += amount;
+
     update();
   }
 }
 
 function sellStockAll(i){
+
   let s = stocks[i];
+
   if(s.owned > 0){
+
     cash += s.price * s.owned;
+
     s.owned = 0;
+
     update();
   }
 }
 
 function sellAll(){
+
   stocks.forEach(s => {
+
     cash += s.price * s.owned;
+
     s.owned = 0;
   });
+
   update();
 }
 
 function buyRandom(){
+
   let affordable = stocks.filter(s => cash >= s.price);
+
   if(affordable.length === 0) return;
 
   let stock = affordable[Math.floor(Math.random()*affordable.length)];
+
   cash -= stock.price;
+
   stock.owned++;
+
   update();
 }
 
 function buyUpgrade(type){
+
   if(cash >= upgradeCosts[type]){
+
     cash -= upgradeCosts[type];
+
     upgrades[type]++;
+
     upgradeCosts[type] = Math.floor(upgradeCosts[type] * 1.8);
+
     update();
   }
 }
 
 function moveMarket(){
+
   stocks.forEach(s=>{
+
     let insiderBoost = Math.max(0.3, 1 - upgrades.insider * 0.01);
-    let change = (Math.random() * 2 - 1) * s.volatility * insiderBoost;
+
+    let change =
+      (Math.random() * 2 - 1)
+      * s.volatility
+      * insiderBoost;
+
     s.price = Math.max(1, s.price * (1 + change));
   });
+
   update();
 }
 
 function randomNews(){
-  let e = newsEvents[Math.floor(Math.random()*newsEvents.length)];
+
+  let e = newsEvents[
+    Math.floor(Math.random()*newsEvents.length)
+  ];
+
   document.getElementById("newsText").innerText = e.text;
 
   if(e.target === "all"){
-    stocks.forEach(s => s.price = Math.max(1, s.price * e.effect));
+
+    stocks.forEach(s => {
+
+      s.price = Math.max(1, s.price * e.effect);
+
+    });
+
   }else{
+
     let stock = stocks.find(s => s.name === e.target);
-    if(stock) stock.price = Math.max(1, stock.price * e.effect);
+
+    if(stock){
+
+      stock.price = Math.max(1, stock.price * e.effect);
+    }
   }
 
   update();
 }
 
 function aiBotTrade(){
+
   if(upgrades.bot <= 0) return;
 
-  let cheapest = stocks.reduce((a,b)=>a.price<b.price?a:b);
+  let cheapest = stocks.reduce((a,b)=>
+    a.price < b.price ? a : b
+  );
 
   if(cash >= cheapest.price){
+
     cash -= cheapest.price;
+
     cheapest.owned++;
   }
 }
 
 function submitScore(){
-  let name = document.getElementById("playerName").value || "Player";
-  let board = JSON.parse(localStorage.getItem("investmentLeaderboard")) || [];
+
+  let name =
+    document.getElementById("playerName").value
+    || "Player";
+
+  let board =
+    JSON.parse(localStorage.getItem("investmentLeaderboard"))
+    || [];
 
   board.push({
     name:name,
@@ -235,65 +400,124 @@ function submitScore(){
   });
 
   board.sort((a,b)=>b.score-a.score);
+
   board = board.slice(0,10);
 
-  localStorage.setItem("investmentLeaderboard", JSON.stringify(board));
+  localStorage.setItem(
+    "investmentLeaderboard",
+    JSON.stringify(board)
+  );
+
   showLeaderboard();
 }
 
 function showLeaderboard(){
-  let board = JSON.parse(localStorage.getItem("investmentLeaderboard")) || [];
+
+  let board =
+    JSON.parse(localStorage.getItem("investmentLeaderboard"))
+    || [];
+
   let list = document.getElementById("leaderboard");
+
   list.innerHTML = "";
 
   board.forEach(e=>{
+
     let li = document.createElement("li");
-    li.innerText = e.name + " — $" + format(e.score);
+
+    li.innerText =
+      e.name + " — $" + format(e.score);
+
     list.appendChild(li);
   });
 }
 
 function saveGame(){
-  localStorage.setItem("shadowInvestments", JSON.stringify({
-    cash, stocks, upgrades, upgradeCosts
-  }));
+
+  localStorage.setItem(
+    "shadowInvestments",
+
+    JSON.stringify({
+      cash,
+      stocks,
+      upgrades,
+      upgradeCosts
+    })
+  );
 }
 
 function loadGame(){
-  let save = JSON.parse(localStorage.getItem("shadowInvestments"));
+
+  let save =
+    JSON.parse(localStorage.getItem("shadowInvestments"));
+
   if(save){
+
     cash = save.cash ?? 1000;
+
     stocks = save.stocks ?? stocks;
+
     upgrades = save.upgrades ?? upgrades;
+
     upgradeCosts = save.upgradeCosts ?? upgradeCosts;
   }
 }
 
-function update(){
-  document.getElementById("cash").innerText = format(cash);
-  document.getElementById("netWorth").innerText = format(netWorth());
-  document.getElementById("passive").innerText = format(passiveIncome());
+function restartGame(){
 
-  document.getElementById("insiderCost").innerText = format(upgradeCosts.insider);
-  document.getElementById("dividendCost").innerText = format(upgradeCosts.dividend);
-  document.getElementById("botCost").innerText = format(upgradeCosts.bot);
+  if(confirm("Are you sure you want to restart?")){
+
+    localStorage.removeItem("shadowInvestments");
+
+    location.reload();
+  }
+}
+
+function update(){
+
+  document.getElementById("cash").innerText =
+    format(cash);
+
+  document.getElementById("netWorth").innerText =
+    format(netWorth());
+
+  document.getElementById("passive").innerText =
+    format(passiveIncome());
+
+  document.getElementById("insiderCost").innerText =
+    format(upgradeCosts.insider);
+
+  document.getElementById("dividendCost").innerText =
+    format(upgradeCosts.dividend);
+
+  document.getElementById("botCost").innerText =
+    format(upgradeCosts.bot);
 
   renderStocks();
+
   saveGame();
 }
 
-setInterval(moveMarket, 1000);
-setInterval(randomNews, 10000);
+setInterval(moveMarket,1000);
+
+setInterval(randomNews,10000);
 
 setInterval(()=>{
+
   cash += passiveIncome();
+
   aiBotTrade();
+
   update();
+
 },1000);
 
 loadGame();
+
 showLeaderboard();
+
 update();
+
 </script>
 
 </body>
