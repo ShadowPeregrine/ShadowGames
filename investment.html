@@ -137,7 +137,7 @@ let upgradeCosts = {
   bot:2500
 };
 
-let stocks = [
+const defaultStocks = [
   {name:"TechCorp 💻", price:100, owned:0, volatility:0.08},
   {name:"CookieCoin 🍪", price:25, owned:0, volatility:0.18},
   {name:"SpaceCorp 🚀", price:150, owned:0, volatility:0.12},
@@ -145,6 +145,8 @@ let stocks = [
   {name:"AI Labs 🤖", price:300, owned:0, volatility:0.15},
   {name:"GoldTrust 🪙", price:200, owned:0, volatility:0.05}
 ];
+
+let stocks = JSON.parse(JSON.stringify(defaultStocks));
 
 const newsEvents = [
   {text:"AI boom! AI Labs jumps!", target:"AI Labs 🤖", effect:1.4},
@@ -469,7 +471,25 @@ function restartGame(){
 
     localStorage.removeItem("shadowInvestments");
 
-    location.reload();
+    cash = 1000;
+
+    upgrades = {
+      insider:0,
+      dividend:0,
+      bot:0
+    };
+
+    upgradeCosts = {
+      insider:500,
+      dividend:1000,
+      bot:2500
+    };
+
+    stocks = JSON.parse(JSON.stringify(defaultStocks));
+
+    update();
+
+    alert("Game restarted!");
   }
 }
 
