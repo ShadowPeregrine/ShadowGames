@@ -10,7 +10,6 @@
     button:hover{background:#16a34a}
     .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
     .card{background:white;border:2px solid #84cc16;border-radius:14px;padding:12px}
-    .money{color:#ca8a04;font-weight:bold}
   </style>
 </head>
 <body>
@@ -46,9 +45,9 @@
 <div class="box">
   <h2>🛒 Market / Upgrades</h2>
   <button onclick="sellAll()">Sell All Goods</button>
-  <button onclick="upgradeFarm()">Upgrade Farm</button>
-  <button onclick="upgradeBarn()">Upgrade Barn</button>
-  <button onclick="upgradeMarket()">Upgrade Market</button>
+  <button onclick="upgradeFarm()">🌾 Upgrade Farm (+2 crop slots)</button>
+  <button onclick="upgradeBarn()">🐄 Upgrade Barn (+2 animal slots)</button>
+  <button onclick="upgradeMarket()">🛒 Upgrade Market (+5% selling prices)</button>
   <button onclick="restartGame()">Restart</button>
 </div>
 
@@ -67,7 +66,6 @@ let cropSlots = 3;
 let animalSlots = 2;
 
 let inventory = {};
-
 let planted = [];
 let ownedAnimals = [];
 let ownedPets = [];
@@ -144,10 +142,7 @@ function plant(seedIndex){
   if(money < cost) return alert("Not enough money!");
 
   money -= cost;
-  planted.push({
-    ...s,
-    left:s.grow
-  });
+  planted.push({...s,left:s.grow});
   update();
 }
 
@@ -166,20 +161,17 @@ function buyAnimal(i){
   if(money < a.cost) return alert("Not enough money!");
 
   money -= a.cost;
-  ownedAnimals.push({
-    ...a,
-    left:a.time
-  });
+  ownedAnimals.push({...a,left:a.time,stored:0});
   update();
 }
 
 function collectAnimal(i){
   let a = ownedAnimals[i];
-  if(a.left > 0) return;
+  if(a.stored <= 0) return;
 
-  let amount = Math.max(1, Math.floor(animalBonus()));
-  addItem(a.product,amount);
-  a.left = a.time;
+  let amount = a.stored * Math.max(1, Math.floor(animalBonus()));
+  addItem(a.product, amount);
+  a.stored = 0;
   update();
 }
 
@@ -218,6 +210,7 @@ function sellAll(){
 function upgradeFarm(){
   let cost = farmLevel * 500;
   if(money < cost) return alert("Need $" + cost);
+
   money -= cost;
   farmLevel++;
   cropSlots += 2;
@@ -227,6 +220,7 @@ function upgradeFarm(){
 function upgradeBarn(){
   let cost = barnLevel * 1000;
   if(money < cost) return alert("Need $" + cost);
+
   money -= cost;
   barnLevel++;
   animalSlots += 2;
@@ -236,6 +230,7 @@ function upgradeBarn(){
 function upgradeMarket(){
   let cost = marketLevel * 1500;
   if(money < cost) return alert("Need $" + cost);
+
   money -= cost;
   marketLevel++;
   update();
@@ -254,7 +249,14 @@ function tick(){
   });
 
   ownedAnimals.forEach(a=>{
-    if(a.left>0)a.left--;
+    if(a.stored === undefined) a.stored = 0;
+
+    if(a.left>0){
+      a.left--;
+    }else{
+      a.stored++;
+      a.left = a.time;
+    }
   });
 
   update();
@@ -308,6 +310,7 @@ function renderAnimals(){
         <h3>${a.emoji} ${a.name}</h3>
         <p>Cost: $${format(a.cost)}</p>
         <p>Produces: ${a.productEmoji} ${a.product}</p>
+        <p>Every ${a.time}s</p>
         <button onclick="buyAnimal(${i})">Buy</button>
       </div>
     `;
@@ -316,11 +319,14 @@ function renderAnimals(){
   box.innerHTML += "<h3>Your Animals</h3>";
 
   ownedAnimals.forEach((a,i)=>{
+    if(a.stored === undefined) a.stored = 0;
+
     box.innerHTML += `
       <div class="card">
         <h3>${a.emoji} ${a.name}</h3>
-        <p>${a.left>0 ? a.product+" in "+a.left+"s" : a.product+" ready!"}</p>
-        <button onclick="collectAnimal(${i})">Collect</button>
+        <p>Next ${a.product}: ${a.left}s</p>
+        <p>Stored ${a.product}: ${a.stored}</p>
+        <button onclick="collectAnimal(${i})">Collect All</button>
       </div>
     `;
   });
@@ -388,6 +394,10 @@ function loadGame(){
     planted = save.planted ?? [];
     ownedAnimals = save.ownedAnimals ?? [];
     ownedPets = save.ownedPets ?? [];
+
+    ownedAnimals.forEach(a=>{
+      if(a.stored === undefined) a.stored = 0;
+    });
   }
 }
 
