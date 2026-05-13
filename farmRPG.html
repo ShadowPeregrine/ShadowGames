@@ -59,30 +59,14 @@ button{
 
 <h1>Shadow Farm RPG 🌾</h1>
 
-<p>
-Move: WASD / Arrow Keys |
-E = interact |
-Space = water
-</p>
+<p>Move: WASD / Arrow Keys | E = interact | Space = water</p>
 
 <div class="panel">
   <h2>Money: $<span id="money">100</span></h2>
-
-  <p>
-    Day: <span id="day">1</span> |
-    Time: <span id="time">Morning</span>
-  </p>
-
+  <p>Day: <span id="day">1</span> | Time: <span id="time">Morning</span></p>
   <p>Hunger</p>
-
-  <div class="bar">
-    <div class="fill" id="hungerBar"></div>
-  </div>
-
-  <p>
-    Hunger:
-    <span id="hunger">100</span>/100
-  </p>
+  <div class="bar"><div class="fill" id="hungerBar"></div></div>
+  <p>Hunger: <span id="hunger">100</span>/100</p>
 </div>
 
 <canvas id="game" width="800" height="500"></canvas>
@@ -94,129 +78,54 @@ Space = water
 
 <div class="panel">
   <h2>🐶 Pets</h2>
-
-  <button onclick="buyPet('Dog')">
-    Buy Dog $300
-  </button>
-
-  <button onclick="buyPet('Cat')">
-    Buy Cat $500
-  </button>
-
-  <button onclick="buyPet('Dragon')">
-    Buy Rideable Dragon $10000
-  </button>
-
+  <button onclick="buyPet('Dog')">Buy Dog $300</button>
+  <button onclick="buyPet('Cat')">Buy Cat $500</button>
+  <button onclick="buyPet('Dragon')">Buy Rideable Dragon $10000</button>
   <p id="pets">No pets yet</p>
 </div>
 
 <div class="panel">
   <h2>🍳 Kitchen</h2>
-
-  <p>
-    Carrot Soup:
-    2 Carrot + 1 Milk
-    → restores 35 hunger
-  </p>
-
-  <p>
-    Farmer Breakfast:
-    2 Egg + 1 Wheat
-    → restores 45 hunger
-  </p>
-
-  <p>
-    Dragon Stew:
-    1 Dragon Scale + 1 Pumpkin
-    → restores 100 hunger
-  </p>
-
-  <button onclick="cook('soup')">
-    Cook Carrot Soup
-  </button>
-
-  <button onclick="cook('breakfast')">
-    Cook Farmer Breakfast
-  </button>
-
-  <button onclick="cook('stew')">
-    Cook Dragon Stew
-  </button>
+  <p>Carrot Soup: 2 Carrot + 1 Milk → restores 35 hunger</p>
+  <p>Farmer Breakfast: 2 Egg + 1 Wheat → restores 45 hunger</p>
+  <p>Dragon Stew: 1 Dragon Scale + 1 Pumpkin → restores 100 hunger</p>
+  <button onclick="cook('soup')">Cook Carrot Soup</button>
+  <button onclick="cook('breakfast')">Cook Farmer Breakfast</button>
+  <button onclick="cook('stew')">Cook Dragon Stew</button>
 </div>
 
 <div class="panel">
   <h2>🛒 Shop / Upgrades</h2>
-
-  <button onclick="buySeed('Carrot')">
-    Buy Carrot Seed $10
-  </button>
-
-  <button onclick="buySeed('Wheat')">
-    Buy Wheat Seed $25
-  </button>
-
-  <button onclick="buySeed('Pumpkin')">
-    Buy Pumpkin Seed $80
-  </button>
-
-  <button onclick="buyAnimal('Chicken')">
-    Buy Chicken $150
-  </button>
-
-  <button onclick="buyAnimal('Cow')">
-    Buy Cow $500
-  </button>
-
-  <button onclick="buyAnimal('Dragon')">
-    Buy Dragon $5000
-  </button>
-
-  <button onclick="hireAssistant()">
-    Hire Assistant $1000
-  </button>
-
-  <button onclick="upgradeHouse()">
-    Upgrade House Storage $750
-  </button>
-
-  <button onclick="restartGame()">
-    Restart
-  </button>
+  <button onclick="buySeed('Carrot')">Buy Carrot Seed $10</button>
+  <button onclick="buySeed('Wheat')">Buy Wheat Seed $25</button>
+  <button onclick="buySeed('Pumpkin')">Buy Pumpkin Seed $80</button>
+  <button onclick="buyAnimal('Chicken')">Buy Chicken $150</button>
+  <button onclick="buyAnimal('Cow')">Buy Cow $500</button>
+  <button onclick="buyAnimal('Dragon')">Buy Dragon $5000</button>
+  <button onclick="hireAssistant()">Hire Assistant $1000</button>
+  <button onclick="upgradeHouse()">Upgrade House Storage $750</button>
+  <button onclick="restartGame()">Restart</button>
 </div>
 
 <p id="message"></p>
 
 <script>
+const canvas=document.getElementById("game");
+const ctx=canvas.getContext("2d");
+const TILE=50;
 
-const canvas =
-  document.getElementById("game");
+let money=100;
+let day=1;
+let clock=0;
+let hunger=100;
+let storageLimit=50;
+let assistants=0;
+let keys={};
+let message="";
+let pets=[];
+let ridingDragon=false;
 
-const ctx =
-  canvas.getContext("2d");
-
-const TILE = 50;
-
-let money = 100;
-
-let day = 1;
-
-let clock = 0;
-
-let hunger = 100;
-
-let storageLimit = 50;
-
-let assistants = 0;
-
-let keys = {};
-
-let message = "";
-
-let pets = [];
-
-let ridingDragon = false;
-
-let player = {
+let player={
   x:60,
   y:60,
   w:32,
@@ -224,7 +133,7 @@ let player = {
   speed:3
 };
 
-let inventory = {
+let inventory={
   CarrotSeed:3,
   WheatSeed:0,
   PumpkinSeed:0,
@@ -236,12 +145,10 @@ let inventory = {
   DragonScale:0
 };
 
-let farmTiles = [];
+let farmTiles=[];
 
 for(let r=2;r<8;r++){
-
   for(let c=1;c<8;c++){
-
     farmTiles.push({
       x:c*TILE,
       y:r*TILE,
@@ -253,112 +160,37 @@ for(let r=2;r<8;r++){
   }
 }
 
-let animals = [];
+let animals=[];
+let assistantsList=[];
 
-let assistantsList = [];
-
-const cropData = {
-
-  Carrot:{
-    seed:"CarrotSeed",
-    grow:8,
-    sell:30,
-    color:"#f97316"
-  },
-
-  Wheat:{
-    seed:"WheatSeed",
-    grow:14,
-    sell:70,
-    color:"#facc15"
-  },
-
-  Pumpkin:{
-    seed:"PumpkinSeed",
-    grow:22,
-    sell:180,
-    color:"#fb923c"
-  }
+const cropData={
+  Carrot:{seed:"CarrotSeed",grow:8,sell:30,color:"#f97316"},
+  Wheat:{seed:"WheatSeed",grow:14,sell:70,color:"#facc15"},
+  Pumpkin:{seed:"PumpkinSeed",grow:22,sell:180,color:"#fb923c"}
 };
 
-const animalData = {
-
-  Chicken:{
-    emoji:"🐔",
-    product:"Egg",
-    time:8,
-    value:35
-  },
-
-  Cow:{
-    emoji:"🐄",
-    product:"Milk",
-    time:15,
-    value:150
-  },
-
-  Dragon:{
-    emoji:"🐉",
-    product:"DragonScale",
-    time:25,
-    value:1000
-  }
+const animalData={
+  Chicken:{emoji:"🐔",product:"Egg",time:8,value:35},
+  Cow:{emoji:"🐄",product:"Milk",time:15,value:150},
+  Dragon:{emoji:"🐉",product:"DragonScale",time:25,value:1000}
 };
 
-const zones = {
-
-  market:{
-    x:650,
-    y:50,
-    w:120,
-    h:90,
-    label:"Market"
-  },
-
-  house:{
-    x:620,
-    y:300,
-    w:140,
-    h:120,
-    label:"House"
-  },
-
-  barn:{
-    x:430,
-    y:50,
-    w:140,
-    h:100,
-    label:"Barn"
-  }
+const zones={
+  market:{x:650,y:50,w:120,h:90,label:"Market"},
+  house:{x:620,y:300,w:140,h:120,label:"House"},
+  barn:{x:430,y:50,w:140,h:100,label:"Barn"}
 };
 
-document.addEventListener(
-  "keydown",
-  e=>keys[e.key.toLowerCase()]=true
-);
+document.addEventListener("keydown",e=>keys[e.key.toLowerCase()]=true);
+document.addEventListener("keyup",e=>keys[e.key.toLowerCase()]=false);
 
-document.addEventListener(
-  "keyup",
-  e=>keys[e.key.toLowerCase()]=false
-);
-
-let canInteract = true;
+let canInteract=true;
 
 document.addEventListener("keydown",e=>{
-
-  if(
-    e.key.toLowerCase()==="e"
-    &&
-    canInteract
-  ){
-
-    canInteract = false;
-
+  if(e.key.toLowerCase()==="e" && canInteract){
+    canInteract=false;
     interact();
-
-    setTimeout(()=>{
-      canInteract = true;
-    },250);
+    setTimeout(()=>{canInteract=true;},250);
   }
 
   if(e.key===" "){
@@ -367,99 +199,66 @@ document.addEventListener("keydown",e=>{
 });
 
 function show(msg){
-
-  message = msg;
-
-  document.getElementById("message")
-    .innerText = msg;
+  message=msg;
+  document.getElementById("message").innerText=msg;
 
   setTimeout(()=>{
-
     if(message===msg){
-
-      message = "";
-
-      document.getElementById("message")
-        .innerText = "";
+      message="";
+      document.getElementById("message").innerText="";
     }
-
   },2500);
 }
 
 function format(n){
-
-  if(n>=1e6)
-    return (n/1e6).toFixed(2)+"M";
-
-  if(n>=1e3)
-    return (n/1e3).toFixed(2)+"K";
-
+  if(n>=1e6)return (n/1e6).toFixed(2)+"M";
+  if(n>=1e3)return (n/1e3).toFixed(2)+"K";
   return Math.floor(n);
 }
 
 function addItem(item,amount){
-
-  let total =
-    Object.values(inventory)
-    .reduce((a,b)=>a+b,0);
+  let total=Object.values(inventory).reduce((a,b)=>a+b,0);
 
   if(total+amount>storageLimit){
-
     show("Storage full!");
-
     return false;
   }
 
-  inventory[item] =
-    (inventory[item]||0)+amount;
-
+  inventory[item]=(inventory[item]||0)+amount;
   return true;
 }
 
 function removeItem(item,amount){
-
-  if((inventory[item]||0)<amount)
-    return false;
-
+  if((inventory[item]||0)<amount)return false;
   inventory[item]-=amount;
-
   return true;
 }
 
 function buyPet(type){
+  let cost={Dog:300,Cat:500,Dragon:10000}[type];
 
-  let cost = {
-    Dog:300,
-    Cat:500,
-    Dragon:10000
-  }[type];
-
-  if(pets.includes(type)){
-
+  if(pets.some(p=>p.type===type)){
     show("Already owned!");
-
     return;
   }
 
-  if(money < cost){
-
+  if(money<cost){
     show("Not enough money!");
-
     return;
   }
 
-  money -= cost;
+  money-=cost;
 
-  pets.push(type);
+  pets.push({
+    type:type,
+    x:player.x-30,
+    y:player.y+30
+  });
 
   if(type==="Dragon"){
-
-    ridingDragon = true;
-
+    ridingDragon=true;
     show("Rideable dragon bought!");
-
   }else{
-
     show(type+" bought!");
   }
 
@@ -467,37 +266,22 @@ function buyPet(type){
 }
 
 function buySeed(type){
+  let cost={Carrot:10,Wheat:25,Pumpkin:80}[type];
+  let seed=cropData[type].seed;
 
-  let cost = {
-    Carrot:10,
-    Wheat:25,
-    Pumpkin:80
-  }[type];
+  if(money<cost)return show("Not enough money!");
 
-  let seed = cropData[type].seed;
-
-  if(money<cost)
-    return show("Not enough money!");
-
-  money -= cost;
-
+  money-=cost;
   addItem(seed,1);
-
   updateUI();
 }
 
 function buyAnimal(type){
+  let cost={Chicken:150,Cow:500,Dragon:5000}[type];
 
-  let cost = {
-    Chicken:150,
-    Cow:500,
-    Dragon:5000
-  }[type];
+  if(money<cost)return show("Not enough money!");
 
-  if(money<cost)
-    return show("Not enough money!");
-
-  money -= cost;
+  money-=cost;
 
   animals.push({
     type,
@@ -506,17 +290,13 @@ function buyAnimal(type){
   });
 
   show(type+" bought!");
-
   updateUI();
 }
 
 function hireAssistant(){
+  if(money<1000)return show("Need $1000!");
 
-  if(money<1000)
-    return show("Need $1000!");
-
-  money -= 1000;
-
+  money-=1000;
   assistants++;
 
   assistantsList.push({
@@ -525,160 +305,107 @@ function hireAssistant(){
   });
 
   show("Assistant hired!");
-
   updateUI();
 }
 
 function upgradeHouse(){
+  if(money<750)return show("Need $750!");
 
-  if(money<750)
-    return show("Need $750!");
-
-  money -= 750;
-
-  storageLimit += 50;
-
+  money-=750;
+  storageLimit+=50;
   show("Storage +50");
-
   updateUI();
 }
 
 function restartGame(){
-
   if(confirm("Restart farm RPG?")){
-
-    localStorage.removeItem(
-      "shadowFarmRPG"
-    );
-
+    localStorage.removeItem("shadowFarmRPG");
     location.reload();
   }
 }
 
 function currentTile(){
-
   return farmTiles.find(t=>
-
-    player.x+player.w>t.x
-    &&
-    player.x<t.x+TILE
-    &&
-    player.y+player.h>t.y
-    &&
+    player.x+player.w>t.x &&
+    player.x<t.x+TILE &&
+    player.y+player.h>t.y &&
     player.y<t.y+TILE
   );
 }
 
 function plantCrop(type){
+  let tile=currentTile();
 
-  let tile = currentTile();
+  if(!tile)return show("Stand on soil.");
+  if(tile.crop)return show("Already planted.");
 
-  if(!tile)
-    return show("Stand on soil.");
+  let seed=cropData[type].seed;
 
-  if(tile.crop)
-    return show("Already planted.");
+  if(!removeItem(seed,1))return show("Need seeds!");
 
-  let seed = cropData[type].seed;
-
-  if(!removeItem(seed,1))
-    return show("Need seeds!");
-
-  tile.crop = type;
-
-  tile.growth = 0;
-
-  tile.watered = false;
-
-  tile.ready = false;
+  tile.crop=type;
+  tile.growth=0;
+  tile.watered=false;
+  tile.ready=false;
 
   show(type+" planted!");
-
   updateUI();
 }
 
 function waterTile(){
-
-  let tile = currentTile();
+  let tile=currentTile();
 
   if(!tile)return;
+  if(!tile.crop)return show("No crop.");
 
-  if(!tile.crop)
-    return show("No crop.");
-
-  tile.watered = true;
-
+  tile.watered=true;
   show("Watered!");
 }
 
 function harvestTile(){
+  let tile=currentTile();
 
-  let tile = currentTile();
-
-  if(!tile||!tile.crop)
-    return show("No crop.");
-
-  if(!tile.ready)
-    return show("Not ready.");
+  if(!tile || !tile.crop)return show("No crop.");
+  if(!tile.ready)return show("Not ready.");
 
   addItem(tile.crop,1);
-
   show("Harvested "+tile.crop);
 
-  tile.crop = null;
-
-  tile.growth = 0;
-
-  tile.ready = false;
-
-  tile.watered = false;
+  tile.crop=null;
+  tile.growth=0;
+  tile.ready=false;
+  tile.watered=false;
 
   updateUI();
 }
 
 function interact(){
-
   if(near(zones.market)){
-
     sellAll();
-
     return;
   }
 
   if(near(zones.barn)){
-
     collectAnimals();
-
     return;
   }
 
-  let tile = currentTile();
+  let tile=currentTile();
 
   if(tile && tile.crop && tile.ready){
-
     harvestTile();
-
     return;
   }
 
   if(tile && !tile.crop){
-
-    if(inventory.CarrotSeed>0)
-      return plantCrop("Carrot");
-
-    if(inventory.WheatSeed>0)
-      return plantCrop("Wheat");
-
-    if(inventory.PumpkinSeed>0)
-      return plantCrop("Pumpkin");
-
+    if(inventory.CarrotSeed>0)return plantCrop("Carrot");
+    if(inventory.WheatSeed>0)return plantCrop("Wheat");
+    if(inventory.PumpkinSeed>0)return plantCrop("Pumpkin");
     return show("Need seeds.");
   }
 
   if(near(zones.house)){
-
     show("House storage: "+storageLimit);
-
     return;
   }
 
@@ -686,135 +413,70 @@ function interact(){
 }
 
 function near(z){
-
-  return player.x<z.x+z.w
-    &&
-    player.x+player.w>z.x
-    &&
-    player.y<z.y+z.h
-    &&
-    player.y+player.h>z.y;
+  return player.x<z.x+z.w &&
+         player.x+player.w>z.x &&
+         player.y<z.y+z.h &&
+         player.y+player.h>z.y;
 }
 
 function collectAnimals(){
-
-  let got = false;
+  let got=false;
 
   animals.forEach(a=>{
-
     if(a.stored>0){
-
-      addItem(
-        animalData[a.type].product,
-        a.stored
-      );
-
-      a.stored = 0;
-
-      got = true;
+      addItem(animalData[a.type].product,a.stored);
+      a.stored=0;
+      got=true;
     }
   });
 
-  show(
-    got
-    ?
-    "Collected goods!"
-    :
-    "Nothing ready."
-  );
-
+  show(got?"Collected goods!":"Nothing ready.");
   updateUI();
 }
 
 function sellAll(){
+  let total=0;
 
-  let total = 0;
-
-  ["Carrot","Wheat","Pumpkin"]
-  .forEach(c=>{
-
-    total +=
-      (inventory[c]||0)
-      *
-      cropData[c].sell;
-
-    inventory[c] = 0;
+  ["Carrot","Wheat","Pumpkin"].forEach(c=>{
+    total+=(inventory[c]||0)*cropData[c].sell;
+    inventory[c]=0;
   });
 
-  Object.keys(animalData)
-  .forEach(a=>{
-
-    let p = animalData[a].product;
-
-    total +=
-      (inventory[p]||0)
-      *
-      animalData[a].value;
-
-    inventory[p] = 0;
+  Object.keys(animalData).forEach(a=>{
+    let p=animalData[a].product;
+    total+=(inventory[p]||0)*animalData[a].value;
+    inventory[p]=0;
   });
 
-  money += total;
-
+  money+=total;
   show("Sold for $"+format(total));
-
   updateUI();
 }
 
 function cook(type){
-
   if(type==="soup"){
-
-    if(
-      removeItem("Carrot",2)
-      &&
-      removeItem("Milk",1)
-    ){
-
-      hunger =
-        Math.min(100,hunger+35);
-
+    if(removeItem("Carrot",2) && removeItem("Milk",1)){
+      hunger=Math.min(100,hunger+35);
       show("Ate soup!");
-
     }else{
-
       show("Need ingredients.");
     }
   }
 
   if(type==="breakfast"){
-
-    if(
-      removeItem("Egg",2)
-      &&
-      removeItem("Wheat",1)
-    ){
-
-      hunger =
-        Math.min(100,hunger+45);
-
+    if(removeItem("Egg",2) && removeItem("Wheat",1)){
+      hunger=Math.min(100,hunger+45);
       show("Ate breakfast!");
-
     }else{
-
       show("Need ingredients.");
     }
   }
 
   if(type==="stew"){
-
-    if(
-      removeItem("DragonScale",1)
-      &&
-      removeItem("Pumpkin",1)
-    ){
-
-      hunger = 100;
-
+    if(removeItem("DragonScale",1) && removeItem("Pumpkin",1)){
+      hunger=100;
       show("Full hunger!");
-
     }else{
-
       show("Need ingredients.");
     }
   }
@@ -823,267 +485,137 @@ function cook(type){
 }
 
 function assistantWork(){
-
   if(assistants<=0)return;
 
   for(let i=0;i<assistants;i++){
-
-    let ready =
-      farmTiles.find(
-        t=>t.crop&&t.ready
-      );
+    let ready=farmTiles.find(t=>t.crop&&t.ready);
 
     if(ready){
-
       addItem(ready.crop,1);
-
-      ready.crop = null;
-
-      ready.growth = 0;
-
-      ready.ready = false;
-
-      ready.watered = false;
-
+      ready.crop=null;
+      ready.growth=0;
+      ready.ready=false;
+      ready.watered=false;
       continue;
     }
 
-    let dry =
-      farmTiles.find(
-        t=>t.crop&&!t.watered
-      );
+    let dry=farmTiles.find(t=>t.crop&&!t.watered);
 
     if(dry){
-
-      dry.watered = true;
-
+      dry.watered=true;
       continue;
     }
 
-    let empty =
-      farmTiles.find(
-        t=>!t.crop
-      );
+    let empty=farmTiles.find(t=>!t.crop);
 
     if(empty){
+      let possible=[];
 
-      let possible = [];
-
-      if(inventory.CarrotSeed>0)
-        possible.push("Carrot");
-
-      if(inventory.WheatSeed>0)
-        possible.push("Wheat");
-
-      if(inventory.PumpkinSeed>0)
-        possible.push("Pumpkin");
+      if(inventory.CarrotSeed>0)possible.push("Carrot");
+      if(inventory.WheatSeed>0)possible.push("Wheat");
+      if(inventory.PumpkinSeed>0)possible.push("Pumpkin");
 
       if(possible.length>0){
-
-        let crop =
-          possible[
-            Math.floor(
-              Math.random()
-              *
-              possible.length
-            )
-          ];
+        let crop=possible[Math.floor(Math.random()*possible.length)];
 
         inventory[crop+"Seed"]--;
-
-        empty.crop = crop;
-
-        empty.growth = 0;
-
-        empty.watered = false;
+        empty.crop=crop;
+        empty.growth=0;
+        empty.watered=false;
       }
     }
   }
 }
 
 function tick(){
-
   clock++;
 
   if(clock%60===0){
-
     day++;
-
-    clock = 0;
+    clock=0;
   }
 
-  hunger =
-    Math.max(0,hunger-0.15);
+  hunger=Math.max(0,hunger-0.15);
 
   farmTiles.forEach(t=>{
-
     if(t.crop&&!t.ready){
+      t.growth+=t.watered?2:1;
+      t.watered=false;
 
-      t.growth +=
-        t.watered
-        ?
-        2
-        :
-        1;
-
-      t.watered = false;
-
-      if(
-        t.growth
-        >=
-        cropData[t.crop].grow
-      ){
-
-        t.ready = true;
+      if(t.growth>=cropData[t.crop].grow){
+        t.ready=true;
       }
     }
   });
 
   animals.forEach(a=>{
-
     a.timer--;
 
     if(a.timer<=0){
-
       a.stored++;
-
-      a.timer =
-        animalData[a.type].time;
+      a.timer=animalData[a.type].time;
     }
   });
 
   assistantWork();
-
   updateUI();
 }
 
 function updatePlayer(){
-
-  let speed =
-    hunger<=0
-    ?
-    1
-    :
-    player.speed;
+  let speed=hunger<=0?1:player.speed;
 
   if(ridingDragon){
-
-    speed += 3;
+    speed+=3;
   }
 
-  if(keys["w"]||keys["arrowup"])
-    player.y-=speed;
+  if(keys["w"]||keys["arrowup"])player.y-=speed;
+  if(keys["s"]||keys["arrowdown"])player.y+=speed;
+  if(keys["a"]||keys["arrowleft"])player.x-=speed;
+  if(keys["d"]||keys["arrowright"])player.x+=speed;
 
-  if(keys["s"]||keys["arrowdown"])
-    player.y+=speed;
+  player.x=Math.max(0,Math.min(canvas.width-player.w,player.x));
+  player.y=Math.max(0,Math.min(canvas.height-player.h,player.y));
+}
 
-  if(keys["a"]||keys["arrowleft"])
-    player.x-=speed;
+function updatePets(){
+  pets.forEach((p,i)=>{
+    let targetX=player.x-35-i*25;
+    let targetY=player.y+35+i*10;
 
-  if(keys["d"]||keys["arrowright"])
-    player.x+=speed;
-
-  player.x =
-    Math.max(
-      0,
-      Math.min(
-        canvas.width-player.w,
-        player.x
-      )
-    );
-
-  player.y =
-    Math.max(
-      0,
-      Math.min(
-        canvas.height-player.h,
-        player.y
-      )
-    );
+    p.x+=(targetX-p.x)*0.08;
+    p.y+=(targetY-p.y)*0.08;
+  });
 }
 
 function drawZone(z,color){
-
-  ctx.fillStyle = color;
-
-  ctx.fillRect(
-    z.x,z.y,z.w,z.h
-  );
-
-  ctx.fillStyle = "white";
-
-  ctx.font = "16px Arial";
-
-  ctx.fillText(
-    z.label,
-    z.x+10,
-    z.y+30
-  );
+  ctx.fillStyle=color;
+  ctx.fillRect(z.x,z.y,z.w,z.h);
+  ctx.fillStyle="white";
+  ctx.font="16px Arial";
+  ctx.fillText(z.label,z.x+10,z.y+30);
 }
 
 function draw(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  ctx.clearRect(
-    0,
-    0,
-    canvas.width,
-    canvas.height
-  );
-
-  drawZone(
-    zones.market,
-    "#a16207"
-  );
-
-  drawZone(
-    zones.house,
-    "#7c2d12"
-  );
-
-  drawZone(
-    zones.barn,
-    "#92400e"
-  );
+  drawZone(zones.market,"#a16207");
+  drawZone(zones.house,"#7c2d12");
+  drawZone(zones.barn,"#92400e");
 
   farmTiles.forEach(t=>{
-
     ctx.fillStyle="#8b5a2b";
-
-    ctx.fillRect(
-      t.x,
-      t.y,
-      TILE-3,
-      TILE-3
-    );
+    ctx.fillRect(t.x,t.y,TILE-3,TILE-3);
 
     if(t.watered){
-
-      ctx.fillStyle =
-        "rgba(59,130,246,.5)";
-
-      ctx.fillRect(
-        t.x,
-        t.y,
-        TILE-3,
-        TILE-3
-      );
+      ctx.fillStyle="rgba(59,130,246,.5)";
+      ctx.fillRect(t.x,t.y,TILE-3,TILE-3);
     }
 
     if(t.crop){
+      let data=cropData[t.crop];
+      ctx.fillStyle=t.ready?"#22c55e":data.color;
 
-      let data =
-        cropData[t.crop];
-
-      ctx.fillStyle =
-        t.ready
-        ?
-        "#22c55e"
-        :
-        data.color;
-
-      let size =
-        10+
-        Math.min(30,t.growth*2);
+      let size=10+Math.min(30,t.growth*2);
 
       ctx.fillRect(
         t.x+20-size/2,
@@ -1095,9 +627,7 @@ function draw(){
   });
 
   animals.forEach((a,i)=>{
-
     ctx.font="28px Arial";
-
     ctx.fillText(
       animalData[a.type].emoji,
       430+(i%4)*35,
@@ -1106,224 +636,116 @@ function draw(){
   });
 
   assistantsList.forEach(a=>{
+    ctx.font="24px Arial";
+    ctx.fillText("🧑‍🌾",a.x,a.y);
+  });
 
+  pets.forEach(p=>{
     ctx.font="24px Arial";
 
-    ctx.fillText(
-      "🧑‍🌾",
-      a.x,
-      a.y
-    );
+    let emoji="🐾";
+    if(p.type==="Dog")emoji="🐶";
+    if(p.type==="Cat")emoji="🐱";
+    if(p.type==="Dragon")emoji="🐉";
+
+    ctx.fillText(emoji,p.x,p.y);
   });
 
   if(ridingDragon){
-
     ctx.font="28px Arial";
-
-    ctx.fillText(
-      "🐉",
-      player.x-5,
-      player.y+8
-    );
+    ctx.fillText("🐉",player.x-5,player.y+8);
   }
 
   ctx.fillStyle="#111827";
-
-  ctx.fillRect(
-    player.x,
-    player.y,
-    player.w,
-    player.h
-  );
+  ctx.fillRect(player.x,player.y,player.w,player.h);
 
   ctx.font="20px Arial";
-
-  ctx.fillText(
-    "🙂",
-    player.x+4,
-    player.y+24
-  );
+  ctx.fillText("🙂",player.x+4,player.y+24);
 }
 
 function updateUI(){
+  document.getElementById("money").innerText=format(money);
+  document.getElementById("day").innerText=day;
+  document.getElementById("time").innerText=clock<30?"Morning":"Evening";
+  document.getElementById("hunger").innerText=Math.floor(hunger);
+  document.getElementById("hungerBar").style.width=hunger+"%";
 
-  document.getElementById("money")
-    .innerText = format(money);
-
-  document.getElementById("day")
-    .innerText = day;
-
-  document.getElementById("time")
-    .innerText =
-      clock<30
-      ?
-      "Morning"
-      :
-      "Evening";
-
-  document.getElementById("hunger")
-    .innerText =
-      Math.floor(hunger);
-
-  document.getElementById("hungerBar")
-    .style.width =
-      hunger+"%";
-
-  let inv = "";
+  let inv="";
 
   for(let item in inventory){
-
     if(inventory[item]>0){
-
-      inv +=
-        item
-        +
-        ": "
-        +
-        inventory[item]
-        +
-        " | ";
+      inv+=item+": "+inventory[item]+" | ";
     }
   }
 
-  inv +=
-    "Storage: "
-    +
-    Object.values(inventory)
-      .reduce((a,b)=>a+b,0)
-    +
-    "/"
-    +
-    storageLimit;
+  inv+="Storage: "+Object.values(inventory).reduce((a,b)=>a+b,0)+"/"+storageLimit;
 
-  document.getElementById("inventory")
-    .innerText = inv;
+  document.getElementById("inventory").innerText=inv;
 
-  document.getElementById("pets")
-    .innerText =
-      pets.length
-      ?
-      pets.join(", ")
-      :
-      "No pets yet";
+  document.getElementById("pets").innerText=
+    pets.length ? pets.map(p=>p.type).join(", ") : "No pets yet";
 
   saveGame();
 }
 
 function saveGame(){
-
-  localStorage.setItem(
-
-    "shadowFarmRPG",
-
-    JSON.stringify({
-
-      money,
-      day,
-      clock,
-      hunger,
-      storageLimit,
-      assistants,
-      inventory,
-      farmTiles,
-      animals,
-      assistantsList,
-      player,
-      pets,
-      ridingDragon
-    })
-  );
+  localStorage.setItem("shadowFarmRPG",JSON.stringify({
+    money,
+    day,
+    clock,
+    hunger,
+    storageLimit,
+    assistants,
+    inventory,
+    farmTiles,
+    animals,
+    assistantsList,
+    player,
+    pets,
+    ridingDragon
+  }));
 }
 
 function loadGame(){
-
-  let save =
-    JSON.parse(
-      localStorage.getItem(
-        "shadowFarmRPG"
-      )
-    );
+  let save=JSON.parse(localStorage.getItem("shadowFarmRPG"));
 
   if(save){
+    money=save.money??money;
+    day=save.day??day;
+    clock=save.clock??clock;
+    hunger=save.hunger??hunger;
+    storageLimit=save.storageLimit??storageLimit;
+    assistants=save.assistants??assistants;
+    inventory=save.inventory??inventory;
+    farmTiles=save.farmTiles??farmTiles;
+    animals=save.animals??animals;
+    assistantsList=save.assistantsList??assistantsList;
+    player=save.player??player;
 
-    money =
-      save.money ?? money;
+    if(save.pets){
+      pets=save.pets.map(p=>{
+        if(typeof p==="string"){
+          return {type:p,x:player.x-30,y:player.y+30};
+        }
+        return p;
+      });
+    }
 
-    day =
-      save.day ?? day;
-
-    clock =
-      save.clock ?? clock;
-
-    hunger =
-      save.hunger ?? hunger;
-
-    storageLimit =
-      save.storageLimit
-      ??
-      storageLimit;
-
-    assistants =
-      save.assistants
-      ??
-      assistants;
-
-    inventory =
-      save.inventory
-      ??
-      inventory;
-
-    farmTiles =
-      save.farmTiles
-      ??
-      farmTiles;
-
-    animals =
-      save.animals
-      ??
-      animals;
-
-    assistantsList =
-      save.assistantsList
-      ??
-      assistantsList;
-
-    player =
-      save.player
-      ??
-      player;
-
-    pets =
-      save.pets
-      ??
-      pets;
-
-    ridingDragon =
-      save.ridingDragon
-      ??
-      ridingDragon;
+    ridingDragon=save.ridingDragon??ridingDragon;
   }
 }
 
 function gameLoop(){
-
   updatePlayer();
-
+  updatePets();
   draw();
-
-  requestAnimationFrame(
-    gameLoop
-  );
+  requestAnimationFrame(gameLoop);
 }
 
 loadGame();
-
 updateUI();
-
 setInterval(tick,1000);
-
 gameLoop();
-
 </script>
 
 </body>
