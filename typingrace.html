@@ -1,206 +1,1329 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Shadow Typing Race PvP</title>
-  <style>
-    body{font-family:Arial;text-align:center;background:#0f172a;color:white;margin:0;padding:20px}
-    input,button{font-size:18px;padding:10px;margin:6px;border-radius:10px}
-    button{background:#2563eb;color:white;border:0;cursor:pointer}
-    .box{background:#1e293b;padding:20px;border-radius:16px;max-width:800px;margin:20px auto}
-    .word{font-size:42px;color:#22c55e;font-weight:bold}
-    .players{display:flex;justify-content:center;gap:20px;flex-wrap:wrap}
-    .player{background:#334155;padding:15px;border-radius:12px;width:250px}
-  </style>
+<title>Shadow Farm RPG</title>
+
+<style>
+body{
+  margin:0;
+  background:#16210f;
+  color:white;
+  font-family:Arial;
+  text-align:center;
+}
+
+canvas{
+  background:#7ccf5b;
+  border:5px solid #3f6212;
+  display:block;
+  margin:15px auto;
+}
+
+.panel{
+  background:#1f2937;
+  border:3px solid #334155;
+  border-radius:14px;
+  padding:12px;
+  margin:10px auto;
+  width:min(900px,95vw);
+}
+
+button{
+  margin:5px;
+  padding:10px 14px;
+  border:0;
+  border-radius:10px;
+  background:#22c55e;
+  color:white;
+  font-weight:bold;
+}
+
+.bar{
+  width:250px;
+  height:22px;
+  background:#334155;
+  border-radius:999px;
+  margin:8px auto;
+  overflow:hidden;
+}
+
+.fill{
+  height:100%;
+  background:#f97316;
+  width:100%;
+}
+</style>
 </head>
+
 <body>
 
-<h1>Shadow Typing Race PvP ⚡</h1>
+<h1>Shadow Farm RPG 🌾</h1>
 
-<div class="box">
-  <input id="name" placeholder="Your name">
-  <input id="room" placeholder="Room code">
-  <br>
-  <button onclick="createRoom()">Create Room</button>
-  <button onclick="joinRoom()">Join Room</button>
-  <button onclick="startRace()">Start Race</button>
+<p>
+Move: WASD / Arrow Keys |
+E = interact |
+Space = water
+</p>
+
+<div class="panel">
+  <h2>Money: $<span id="money">100</span></h2>
+
+  <p>
+    Day: <span id="day">1</span> |
+    Time: <span id="time">Morning</span>
+  </p>
+
+  <p>Hunger</p>
+
+  <div class="bar">
+    <div class="fill" id="hungerBar"></div>
+  </div>
+
+  <p>
+    Hunger:
+    <span id="hunger">100</span>/100
+  </p>
 </div>
 
-<div class="box">
-  <h2>Room: <span id="roomShow">None</span></h2>
-  <h2>Status: <span id="status">Not joined</span></h2>
-  <div class="word" id="word">---</div>
-  <input id="answer" placeholder="type word here" autocomplete="off">
+<canvas id="game" width="800" height="500"></canvas>
+
+<div class="panel">
+  <h2>📦 Inventory</h2>
+  <p id="inventory">Empty</p>
 </div>
 
-<div class="box">
-  <h2>Players</h2>
-  <div class="players" id="players"></div>
+<div class="panel">
+  <h2>🐶 Pets</h2>
+
+  <button onclick="buyPet('Dog')">
+    Buy Dog $300
+  </button>
+
+  <button onclick="buyPet('Cat')">
+    Buy Cat $500
+  </button>
+
+  <button onclick="buyPet('Dragon')">
+    Buy Rideable Dragon $10000
+  </button>
+
+  <p id="pets">No pets yet</p>
 </div>
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import {
-  getFirestore, doc, setDoc, getDoc, updateDoc,
-  collection, onSnapshot
-} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+<div class="panel">
+  <h2>🍳 Kitchen</h2>
 
-/* 🔥 PASTE YOUR FIREBASE CONFIG HERE */
-const firebaseConfig = {
-  apiKey: "PASTE_HERE",
-  authDomain: "PASTE_HERE",
-  projectId: "PASTE_HERE",
-  storageBucket: "PASTE_HERE",
-  messagingSenderId: "PASTE_HERE",
-  appId: "PASTE_HERE"
+  <p>
+    Carrot Soup:
+    2 Carrot + 1 Milk
+    → restores 35 hunger
+  </p>
+
+  <p>
+    Farmer Breakfast:
+    2 Egg + 1 Wheat
+    → restores 45 hunger
+  </p>
+
+  <p>
+    Dragon Stew:
+    1 Dragon Scale + 1 Pumpkin
+    → restores 100 hunger
+  </p>
+
+  <button onclick="cook('soup')">
+    Cook Carrot Soup
+  </button>
+
+  <button onclick="cook('breakfast')">
+    Cook Farmer Breakfast
+  </button>
+
+  <button onclick="cook('stew')">
+    Cook Dragon Stew
+  </button>
+</div>
+
+<div class="panel">
+  <h2>🛒 Shop / Upgrades</h2>
+
+  <button onclick="buySeed('Carrot')">
+    Buy Carrot Seed $10
+  </button>
+
+  <button onclick="buySeed('Wheat')">
+    Buy Wheat Seed $25
+  </button>
+
+  <button onclick="buySeed('Pumpkin')">
+    Buy Pumpkin Seed $80
+  </button>
+
+  <button onclick="buyAnimal('Chicken')">
+    Buy Chicken $150
+  </button>
+
+  <button onclick="buyAnimal('Cow')">
+    Buy Cow $500
+  </button>
+
+  <button onclick="buyAnimal('Dragon')">
+    Buy Dragon $5000
+  </button>
+
+  <button onclick="hireAssistant()">
+    Hire Assistant $1000
+  </button>
+
+  <button onclick="upgradeHouse()">
+    Upgrade House Storage $750
+  </button>
+
+  <button onclick="restartGame()">
+    Restart
+  </button>
+</div>
+
+<p id="message"></p>
+
+<script>
+
+const canvas =
+  document.getElementById("game");
+
+const ctx =
+  canvas.getContext("2d");
+
+const TILE = 50;
+
+let money = 100;
+
+let day = 1;
+
+let clock = 0;
+
+let hunger = 100;
+
+let storageLimit = 50;
+
+let assistants = 0;
+
+let keys = {};
+
+let message = "";
+
+let pets = [];
+
+let ridingDragon = false;
+
+let player = {
+  x:60,
+  y:60,
+  w:32,
+  h:32,
+  speed:3
 };
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-
-const words = [
-  "cat","dog","sun","apple","school","dragon","planet","keyboard","cookie","shadow",
-  "rocket","tiger","banana","purple","winter","castle","speed","winner","typing","race"
-];
-
-let roomCode = "";
-let playerId = "";
-let playerName = "";
-let currentIndex = 0;
-let currentWords = [];
-
-const nameInput = document.getElementById("name");
-const roomInput = document.getElementById("room");
-const roomShow = document.getElementById("roomShow");
-const statusText = document.getElementById("status");
-const wordBox = document.getElementById("word");
-const answer = document.getElementById("answer");
-const playersBox = document.getElementById("players");
-
-function randomRoom(){
-  return Math.random().toString(36).substring(2,8).toUpperCase();
-}
-
-function shuffle(arr){
-  return arr.sort(() => Math.random() - 0.5);
-}
-
-window.createRoom = async function(){
-  playerName = nameInput.value || "Player";
-  roomCode = randomRoom();
-  playerId = Date.now().toString();
-
-  currentWords = shuffle([...words]).slice(0,10);
-
-  await setDoc(doc(db,"rooms",roomCode),{
-    started:false,
-    winner:"",
-    words:currentWords
-  });
-
-  await setDoc(doc(db,"rooms",roomCode,"players",playerId),{
-    name:playerName,
-    score:0,
-    finished:false
-  });
-
-  setupRoom();
+let inventory = {
+  CarrotSeed:3,
+  WheatSeed:0,
+  PumpkinSeed:0,
+  Carrot:0,
+  Wheat:0,
+  Pumpkin:0,
+  Egg:0,
+  Milk:0,
+  DragonScale:0
 };
 
-window.joinRoom = async function(){
-  playerName = nameInput.value || "Player";
-  roomCode = roomInput.value.trim().toUpperCase();
-  playerId = Date.now().toString();
+let farmTiles = [];
 
-  const roomRef = doc(db,"rooms",roomCode);
-  const snap = await getDoc(roomRef);
+for(let r=2;r<8;r++){
 
-  if(!snap.exists()){
-    alert("Room not found!");
+  for(let c=1;c<8;c++){
+
+    farmTiles.push({
+      x:c*TILE,
+      y:r*TILE,
+      crop:null,
+      watered:false,
+      growth:0,
+      ready:false
+    });
+  }
+}
+
+let animals = [];
+
+let assistantsList = [];
+
+const cropData = {
+
+  Carrot:{
+    seed:"CarrotSeed",
+    grow:8,
+    sell:30,
+    color:"#f97316"
+  },
+
+  Wheat:{
+    seed:"WheatSeed",
+    grow:14,
+    sell:70,
+    color:"#facc15"
+  },
+
+  Pumpkin:{
+    seed:"PumpkinSeed",
+    grow:22,
+    sell:180,
+    color:"#fb923c"
+  }
+};
+
+const animalData = {
+
+  Chicken:{
+    emoji:"🐔",
+    product:"Egg",
+    time:8,
+    value:35
+  },
+
+  Cow:{
+    emoji:"🐄",
+    product:"Milk",
+    time:15,
+    value:150
+  },
+
+  Dragon:{
+    emoji:"🐉",
+    product:"DragonScale",
+    time:25,
+    value:1000
+  }
+};
+
+const zones = {
+
+  market:{
+    x:650,
+    y:50,
+    w:120,
+    h:90,
+    label:"Market"
+  },
+
+  house:{
+    x:620,
+    y:300,
+    w:140,
+    h:120,
+    label:"House"
+  },
+
+  barn:{
+    x:430,
+    y:50,
+    w:140,
+    h:100,
+    label:"Barn"
+  }
+};
+
+document.addEventListener(
+  "keydown",
+  e=>keys[e.key.toLowerCase()]=true
+);
+
+document.addEventListener(
+  "keyup",
+  e=>keys[e.key.toLowerCase()]=false
+);
+
+let canInteract = true;
+
+document.addEventListener("keydown",e=>{
+
+  if(
+    e.key.toLowerCase()==="e"
+    &&
+    canInteract
+  ){
+
+    canInteract = false;
+
+    interact();
+
+    setTimeout(()=>{
+      canInteract = true;
+    },250);
+  }
+
+  if(e.key===" "){
+    waterTile();
+  }
+});
+
+function show(msg){
+
+  message = msg;
+
+  document.getElementById("message")
+    .innerText = msg;
+
+  setTimeout(()=>{
+
+    if(message===msg){
+
+      message = "";
+
+      document.getElementById("message")
+        .innerText = "";
+    }
+
+  },2500);
+}
+
+function format(n){
+
+  if(n>=1e6)
+    return (n/1e6).toFixed(2)+"M";
+
+  if(n>=1e3)
+    return (n/1e3).toFixed(2)+"K";
+
+  return Math.floor(n);
+}
+
+function addItem(item,amount){
+
+  let total =
+    Object.values(inventory)
+    .reduce((a,b)=>a+b,0);
+
+  if(total+amount>storageLimit){
+
+    show("Storage full!");
+
+    return false;
+  }
+
+  inventory[item] =
+    (inventory[item]||0)+amount;
+
+  return true;
+}
+
+function removeItem(item,amount){
+
+  if((inventory[item]||0)<amount)
+    return false;
+
+  inventory[item]-=amount;
+
+  return true;
+}
+
+function buyPet(type){
+
+  let cost = {
+    Dog:300,
+    Cat:500,
+    Dragon:10000
+  }[type];
+
+  if(pets.includes(type)){
+
+    show("Already owned!");
+
     return;
   }
 
-  await setDoc(doc(db,"rooms",roomCode,"players",playerId),{
-    name:playerName,
-    score:0,
-    finished:false
+  if(money < cost){
+
+    show("Not enough money!");
+
+    return;
+  }
+
+  money -= cost;
+
+  pets.push(type);
+
+  if(type==="Dragon"){
+
+    ridingDragon = true;
+
+    show("Rideable dragon bought!");
+
+  }else{
+
+    show(type+" bought!");
+  }
+
+  updateUI();
+}
+
+function buySeed(type){
+
+  let cost = {
+    Carrot:10,
+    Wheat:25,
+    Pumpkin:80
+  }[type];
+
+  let seed = cropData[type].seed;
+
+  if(money<cost)
+    return show("Not enough money!");
+
+  money -= cost;
+
+  addItem(seed,1);
+
+  updateUI();
+}
+
+function buyAnimal(type){
+
+  let cost = {
+    Chicken:150,
+    Cow:500,
+    Dragon:5000
+  }[type];
+
+  if(money<cost)
+    return show("Not enough money!");
+
+  money -= cost;
+
+  animals.push({
+    type,
+    timer:animalData[type].time,
+    stored:0
   });
 
-  setupRoom();
-};
+  show(type+" bought!");
 
-function setupRoom(){
-  roomShow.innerText = roomCode;
-  statusText.innerText = "Joined";
-  answer.focus();
+  updateUI();
+}
 
-  onSnapshot(doc(db,"rooms",roomCode), snap=>{
-    const data = snap.data();
-    if(!data) return;
+function hireAssistant(){
 
-    currentWords = data.words || [];
+  if(money<1000)
+    return show("Need $1000!");
 
-    if(data.started){
-      statusText.innerText = data.winner ? "Winner: " + data.winner : "Race started!";
-      showWord();
-    }else{
-      statusText.innerText = "Waiting to start";
-      wordBox.innerText = "---";
+  money -= 1000;
+
+  assistants++;
+
+  assistantsList.push({
+    x:100+assistants*20,
+    y:430
+  });
+
+  show("Assistant hired!");
+
+  updateUI();
+}
+
+function upgradeHouse(){
+
+  if(money<750)
+    return show("Need $750!");
+
+  money -= 750;
+
+  storageLimit += 50;
+
+  show("Storage +50");
+
+  updateUI();
+}
+
+function restartGame(){
+
+  if(confirm("Restart farm RPG?")){
+
+    localStorage.removeItem(
+      "shadowFarmRPG"
+    );
+
+    location.reload();
+  }
+}
+
+function currentTile(){
+
+  return farmTiles.find(t=>
+
+    player.x+player.w>t.x
+    &&
+    player.x<t.x+TILE
+    &&
+    player.y+player.h>t.y
+    &&
+    player.y<t.y+TILE
+  );
+}
+
+function plantCrop(type){
+
+  let tile = currentTile();
+
+  if(!tile)
+    return show("Stand on soil.");
+
+  if(tile.crop)
+    return show("Already planted.");
+
+  let seed = cropData[type].seed;
+
+  if(!removeItem(seed,1))
+    return show("Need seeds!");
+
+  tile.crop = type;
+
+  tile.growth = 0;
+
+  tile.watered = false;
+
+  tile.ready = false;
+
+  show(type+" planted!");
+
+  updateUI();
+}
+
+function waterTile(){
+
+  let tile = currentTile();
+
+  if(!tile)return;
+
+  if(!tile.crop)
+    return show("No crop.");
+
+  tile.watered = true;
+
+  show("Watered!");
+}
+
+function harvestTile(){
+
+  let tile = currentTile();
+
+  if(!tile||!tile.crop)
+    return show("No crop.");
+
+  if(!tile.ready)
+    return show("Not ready.");
+
+  addItem(tile.crop,1);
+
+  show("Harvested "+tile.crop);
+
+  tile.crop = null;
+
+  tile.growth = 0;
+
+  tile.ready = false;
+
+  tile.watered = false;
+
+  updateUI();
+}
+
+function interact(){
+
+  if(near(zones.market)){
+
+    sellAll();
+
+    return;
+  }
+
+  if(near(zones.barn)){
+
+    collectAnimals();
+
+    return;
+  }
+
+  let tile = currentTile();
+
+  if(tile && tile.crop && tile.ready){
+
+    harvestTile();
+
+    return;
+  }
+
+  if(tile && !tile.crop){
+
+    if(inventory.CarrotSeed>0)
+      return plantCrop("Carrot");
+
+    if(inventory.WheatSeed>0)
+      return plantCrop("Wheat");
+
+    if(inventory.PumpkinSeed>0)
+      return plantCrop("Pumpkin");
+
+    return show("Need seeds.");
+  }
+
+  if(near(zones.house)){
+
+    show("House storage: "+storageLimit);
+
+    return;
+  }
+
+  show("Nothing here.");
+}
+
+function near(z){
+
+  return player.x<z.x+z.w
+    &&
+    player.x+player.w>z.x
+    &&
+    player.y<z.y+z.h
+    &&
+    player.y+player.h>z.y;
+}
+
+function collectAnimals(){
+
+  let got = false;
+
+  animals.forEach(a=>{
+
+    if(a.stored>0){
+
+      addItem(
+        animalData[a.type].product,
+        a.stored
+      );
+
+      a.stored = 0;
+
+      got = true;
     }
   });
 
-  onSnapshot(collection(db,"rooms",roomCode,"players"), snap=>{
-    playersBox.innerHTML = "";
-    snap.forEach(docSnap=>{
-      const p = docSnap.data();
-      const div = document.createElement("div");
-      div.className = "player";
-      div.innerHTML = `<h3>${p.name}</h3><p>Score: ${p.score}/10</p>`;
-      playersBox.appendChild(div);
-    });
-  });
+  show(
+    got
+    ?
+    "Collected goods!"
+    :
+    "Nothing ready."
+  );
+
+  updateUI();
 }
 
-window.startRace = async function(){
-  if(!roomCode) return alert("Join or create a room first!");
-  await updateDoc(doc(db,"rooms",roomCode),{
-    started:true,
-    winner:""
-  });
-};
+function sellAll(){
 
-function showWord(){
-  wordBox.innerText = currentWords[currentIndex] || "FINISHED!";
+  let total = 0;
+
+  ["Carrot","Wheat","Pumpkin"]
+  .forEach(c=>{
+
+    total +=
+      (inventory[c]||0)
+      *
+      cropData[c].sell;
+
+    inventory[c] = 0;
+  });
+
+  Object.keys(animalData)
+  .forEach(a=>{
+
+    let p = animalData[a].product;
+
+    total +=
+      (inventory[p]||0)
+      *
+      animalData[a].value;
+
+    inventory[p] = 0;
+  });
+
+  money += total;
+
+  show("Sold for $"+format(total));
+
+  updateUI();
 }
 
-answer.addEventListener("input", async ()=>{
-  if(!roomCode || currentWords.length===0) return;
+function cook(type){
 
-  const typed = answer.value.trim().toLowerCase();
-  const target = currentWords[currentIndex];
+  if(type==="soup"){
 
-  if(typed === target){
-    currentIndex++;
-    answer.value = "";
+    if(
+      removeItem("Carrot",2)
+      &&
+      removeItem("Milk",1)
+    ){
 
-    await updateDoc(doc(db,"rooms",roomCode,"players",playerId),{
-      score:currentIndex
-    });
+      hunger =
+        Math.min(100,hunger+35);
 
-    if(currentIndex >= currentWords.length){
-      await updateDoc(doc(db,"rooms",roomCode,"players",playerId),{
-        finished:true
-      });
+      show("Ate soup!");
 
-      await updateDoc(doc(db,"rooms",roomCode),{
-        winner:playerName
-      });
-
-      wordBox.innerText = "YOU FINISHED!";
     }else{
-      showWord();
+
+      show("Need ingredients.");
     }
   }
-});
+
+  if(type==="breakfast"){
+
+    if(
+      removeItem("Egg",2)
+      &&
+      removeItem("Wheat",1)
+    ){
+
+      hunger =
+        Math.min(100,hunger+45);
+
+      show("Ate breakfast!");
+
+    }else{
+
+      show("Need ingredients.");
+    }
+  }
+
+  if(type==="stew"){
+
+    if(
+      removeItem("DragonScale",1)
+      &&
+      removeItem("Pumpkin",1)
+    ){
+
+      hunger = 100;
+
+      show("Full hunger!");
+
+    }else{
+
+      show("Need ingredients.");
+    }
+  }
+
+  updateUI();
+}
+
+function assistantWork(){
+
+  if(assistants<=0)return;
+
+  for(let i=0;i<assistants;i++){
+
+    let ready =
+      farmTiles.find(
+        t=>t.crop&&t.ready
+      );
+
+    if(ready){
+
+      addItem(ready.crop,1);
+
+      ready.crop = null;
+
+      ready.growth = 0;
+
+      ready.ready = false;
+
+      ready.watered = false;
+
+      continue;
+    }
+
+    let dry =
+      farmTiles.find(
+        t=>t.crop&&!t.watered
+      );
+
+    if(dry){
+
+      dry.watered = true;
+
+      continue;
+    }
+
+    let empty =
+      farmTiles.find(
+        t=>!t.crop
+      );
+
+    if(empty){
+
+      let possible = [];
+
+      if(inventory.CarrotSeed>0)
+        possible.push("Carrot");
+
+      if(inventory.WheatSeed>0)
+        possible.push("Wheat");
+
+      if(inventory.PumpkinSeed>0)
+        possible.push("Pumpkin");
+
+      if(possible.length>0){
+
+        let crop =
+          possible[
+            Math.floor(
+              Math.random()
+              *
+              possible.length
+            )
+          ];
+
+        inventory[crop+"Seed"]--;
+
+        empty.crop = crop;
+
+        empty.growth = 0;
+
+        empty.watered = false;
+      }
+    }
+  }
+}
+
+function tick(){
+
+  clock++;
+
+  if(clock%60===0){
+
+    day++;
+
+    clock = 0;
+  }
+
+  hunger =
+    Math.max(0,hunger-0.15);
+
+  farmTiles.forEach(t=>{
+
+    if(t.crop&&!t.ready){
+
+      t.growth +=
+        t.watered
+        ?
+        2
+        :
+        1;
+
+      t.watered = false;
+
+      if(
+        t.growth
+        >=
+        cropData[t.crop].grow
+      ){
+
+        t.ready = true;
+      }
+    }
+  });
+
+  animals.forEach(a=>{
+
+    a.timer--;
+
+    if(a.timer<=0){
+
+      a.stored++;
+
+      a.timer =
+        animalData[a.type].time;
+    }
+  });
+
+  assistantWork();
+
+  updateUI();
+}
+
+function updatePlayer(){
+
+  let speed =
+    hunger<=0
+    ?
+    1
+    :
+    player.speed;
+
+  if(ridingDragon){
+
+    speed += 3;
+  }
+
+  if(keys["w"]||keys["arrowup"])
+    player.y-=speed;
+
+  if(keys["s"]||keys["arrowdown"])
+    player.y+=speed;
+
+  if(keys["a"]||keys["arrowleft"])
+    player.x-=speed;
+
+  if(keys["d"]||keys["arrowright"])
+    player.x+=speed;
+
+  player.x =
+    Math.max(
+      0,
+      Math.min(
+        canvas.width-player.w,
+        player.x
+      )
+    );
+
+  player.y =
+    Math.max(
+      0,
+      Math.min(
+        canvas.height-player.h,
+        player.y
+      )
+    );
+}
+
+function drawZone(z,color){
+
+  ctx.fillStyle = color;
+
+  ctx.fillRect(
+    z.x,z.y,z.w,z.h
+  );
+
+  ctx.fillStyle = "white";
+
+  ctx.font = "16px Arial";
+
+  ctx.fillText(
+    z.label,
+    z.x+10,
+    z.y+30
+  );
+}
+
+function draw(){
+
+  ctx.clearRect(
+    0,
+    0,
+    canvas.width,
+    canvas.height
+  );
+
+  drawZone(
+    zones.market,
+    "#a16207"
+  );
+
+  drawZone(
+    zones.house,
+    "#7c2d12"
+  );
+
+  drawZone(
+    zones.barn,
+    "#92400e"
+  );
+
+  farmTiles.forEach(t=>{
+
+    ctx.fillStyle="#8b5a2b";
+
+    ctx.fillRect(
+      t.x,
+      t.y,
+      TILE-3,
+      TILE-3
+    );
+
+    if(t.watered){
+
+      ctx.fillStyle =
+        "rgba(59,130,246,.5)";
+
+      ctx.fillRect(
+        t.x,
+        t.y,
+        TILE-3,
+        TILE-3
+      );
+    }
+
+    if(t.crop){
+
+      let data =
+        cropData[t.crop];
+
+      ctx.fillStyle =
+        t.ready
+        ?
+        "#22c55e"
+        :
+        data.color;
+
+      let size =
+        10+
+        Math.min(30,t.growth*2);
+
+      ctx.fillRect(
+        t.x+20-size/2,
+        t.y+25-size/2,
+        size,
+        size
+      );
+    }
+  });
+
+  animals.forEach((a,i)=>{
+
+    ctx.font="28px Arial";
+
+    ctx.fillText(
+      animalData[a.type].emoji,
+      430+(i%4)*35,
+      120+Math.floor(i/4)*35
+    );
+  });
+
+  assistantsList.forEach(a=>{
+
+    ctx.font="24px Arial";
+
+    ctx.fillText(
+      "🧑‍🌾",
+      a.x,
+      a.y
+    );
+  });
+
+  if(ridingDragon){
+
+    ctx.font="28px Arial";
+
+    ctx.fillText(
+      "🐉",
+      player.x-5,
+      player.y+8
+    );
+  }
+
+  ctx.fillStyle="#111827";
+
+  ctx.fillRect(
+    player.x,
+    player.y,
+    player.w,
+    player.h
+  );
+
+  ctx.font="20px Arial";
+
+  ctx.fillText(
+    "🙂",
+    player.x+4,
+    player.y+24
+  );
+}
+
+function updateUI(){
+
+  document.getElementById("money")
+    .innerText = format(money);
+
+  document.getElementById("day")
+    .innerText = day;
+
+  document.getElementById("time")
+    .innerText =
+      clock<30
+      ?
+      "Morning"
+      :
+      "Evening";
+
+  document.getElementById("hunger")
+    .innerText =
+      Math.floor(hunger);
+
+  document.getElementById("hungerBar")
+    .style.width =
+      hunger+"%";
+
+  let inv = "";
+
+  for(let item in inventory){
+
+    if(inventory[item]>0){
+
+      inv +=
+        item
+        +
+        ": "
+        +
+        inventory[item]
+        +
+        " | ";
+    }
+  }
+
+  inv +=
+    "Storage: "
+    +
+    Object.values(inventory)
+      .reduce((a,b)=>a+b,0)
+    +
+    "/"
+    +
+    storageLimit;
+
+  document.getElementById("inventory")
+    .innerText = inv;
+
+  document.getElementById("pets")
+    .innerText =
+      pets.length
+      ?
+      pets.join(", ")
+      :
+      "No pets yet";
+
+  saveGame();
+}
+
+function saveGame(){
+
+  localStorage.setItem(
+
+    "shadowFarmRPG",
+
+    JSON.stringify({
+
+      money,
+      day,
+      clock,
+      hunger,
+      storageLimit,
+      assistants,
+      inventory,
+      farmTiles,
+      animals,
+      assistantsList,
+      player,
+      pets,
+      ridingDragon
+    })
+  );
+}
+
+function loadGame(){
+
+  let save =
+    JSON.parse(
+      localStorage.getItem(
+        "shadowFarmRPG"
+      )
+    );
+
+  if(save){
+
+    money =
+      save.money ?? money;
+
+    day =
+      save.day ?? day;
+
+    clock =
+      save.clock ?? clock;
+
+    hunger =
+      save.hunger ?? hunger;
+
+    storageLimit =
+      save.storageLimit
+      ??
+      storageLimit;
+
+    assistants =
+      save.assistants
+      ??
+      assistants;
+
+    inventory =
+      save.inventory
+      ??
+      inventory;
+
+    farmTiles =
+      save.farmTiles
+      ??
+      farmTiles;
+
+    animals =
+      save.animals
+      ??
+      animals;
+
+    assistantsList =
+      save.assistantsList
+      ??
+      assistantsList;
+
+    player =
+      save.player
+      ??
+      player;
+
+    pets =
+      save.pets
+      ??
+      pets;
+
+    ridingDragon =
+      save.ridingDragon
+      ??
+      ridingDragon;
+  }
+}
+
+function gameLoop(){
+
+  updatePlayer();
+
+  draw();
+
+  requestAnimationFrame(
+    gameLoop
+  );
+}
+
+loadGame();
+
+updateUI();
+
+setInterval(tick,1000);
+
+gameLoop();
+
 </script>
 
 </body>
