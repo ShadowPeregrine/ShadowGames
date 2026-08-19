@@ -1,4 +1,4 @@
-index.html
+
 from pathlib import Path
 import textwrap, zipfile, json, os, re, math, random
 
@@ -1200,6 +1200,7 @@ zip_path = Path("/mnt/data/rankbound_v0_1.zip")
 with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as z:
     for f in base.iterdir():
         z.write(f, arcname=f.name)
+index.html
 
 print(f"Created: {zip_path}")
 print("Files:", ", ".join(p.name for p in base.iterdir()))
