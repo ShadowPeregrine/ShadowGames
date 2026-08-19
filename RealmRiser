@@ -1,0 +1,1204 @@
+from pathlib import Path
+import textwrap, zipfile, json, os, re, math, random
+
+base = Path("/mnt/data/rankbound_v0_1")
+base.mkdir(exist_ok=True)
+
+index_html = r'''<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rankbound - Version 0.1</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="game-shell">
+    <header>
+      <div>
+        <h1>⚔️ RANKBOUND</h1>
+        <p class="subtitle">Earth · Version 0.1</p>
+      </div>
+      <div class="top-buttons">
+        <button id="saveBtn" class="secondary">💾 Save</button>
+        <button id="resetBtn" class="danger">↻ Reset</button>
+      </div>
+    </header>
+
+    <section class="world-card">
+      <div>
+        <div class="label">WORLD</div>
+        <div id="worldName" class="big-value">🌍 Earth</div>
+      </div>
+      <div>
+        <div class="label">ROUND</div>
+        <div id="roundText" class="big-value">1 / 100</div>
+      </div>
+      <div>
+        <div class="label">CHARACTER LEVEL</div>
+        <div id="levelText" class="big-value">1</div>
+      </div>
+      <div>
+        <div class="label">COINS</div>
+        <div id="coinText" class="big-value">0 🪙</div>
+      </div>
+      <div>
+        <div class="label">EVENT COINS</div>
+        <div id="eventCoinText" class="big-value">0 ✨</div>
+      </div>
+    </section>
+
+    <main class="battle-grid">
+      <section class="panel player-panel">
+        <h2>🧑 Hero</h2>
+        <div class="portrait hero">🛡️</div>
+
+        <div class="bar-wrap">
+          <div class="bar-label"><span>HP</span><span id="playerHpText"></span></div>
+          <div class="bar"><div id="playerHpBar" class="fill hp"></div></div>
+        </div>
+
+        <div class="bar-wrap">
+          <div class="bar-label"><span>XP</span><span id="xpText"></span></div>
+          <div class="bar"><div id="xpBar" class="fill xp"></div></div>
+        </div>
+
+        <div class="stats" id="playerStats"></div>
+
+        <div class="gear-box">
+          <h3>Equipped</h3>
+          <p id="weaponText">Weapon: None</p>
+          <p id="armorText">Armor: None</p>
+          <p id="petText">Pet: None</p>
+        </div>
+      </section>
+
+      <section class="panel center-panel">
+        <div id="encounterTag" class="encounter-tag">NORMAL ENCOUNTER</div>
+        <h2 id="enemyName">Slime</h2>
+        <div id="enemyEmoji" class="portrait enemy">🟢</div>
+
+        <div class="bar-wrap">
+          <div class="bar-label"><span>ENEMY HP</span><span id="enemyHpText"></span></div>
+          <div class="bar"><div id="enemyHpBar" class="fill enemyhp"></div></div>
+        </div>
+
+        <div id="enemyStats" class="enemy-stats"></div>
+
+        <div class="actions">
+          <button id="attackBtn" class="attack">⚔️ ATTACK</button>
+          <button id="healBtn" class="secondary">🧪 Potion (<span id="potionCount">2</span>)</button>
+          <button id="merchantBtn" class="merchant hidden">🧙 Visit Merchant</button>
+          <button id="nextBtn" class="next hidden">➡️ Next Round</button>
+        </div>
+
+        <div id="battleLog" class="battle-log"></div>
+      </section>
+
+      <section class="panel inventory-panel">
+        <h2>🎒 Inventory</h2>
+        <div class="tabs">
+          <button class="tab active" data-tab="weapons">Weapons</button>
+          <button class="tab" data-tab="armor">Armor</button>
+          <button class="tab" data-tab="pets">Pets</button>
+        </div>
+        <div id="inventoryList" class="inventory-list"></div>
+      </section>
+    </main>
+
+    <section id="merchantPanel" class="panel merchant-panel hidden">
+      <div class="merchant-head">
+        <div>
+          <h2>🧙 Wandering Merchant</h2>
+          <p>"Spend wisely, warrior. Better ranks cost more."</p>
+        </div>
+        <button id="closeMerchantBtn" class="secondary">Close</button>
+      </div>
+      <div id="merchantItems" class="shop-grid"></div>
+    </section>
+
+    <section class="panel roadmap">
+      <h2>🌌 World Roadmap</h2>
+      <div class="worlds">
+        <div class="world active-world">🌍 Earth<br><small>Rounds 1–100</small></div>
+        <div class="world locked">🍄 Mushroom Planet<br><small>Rounds 101–200</small></div>
+        <div class="world locked">☀️ Sun World<br><small>Rounds 201–300</small></div>
+      </div>
+      <p class="roadmap-note">Boss every 10 rounds. World Boss every 100 rounds. More worlds, monsters, gear, pets and events can be added in future updates.</p>
+    </section>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
+'''
+
+style_css = r'''* {
+  box-sizing: border-box;
+}
+
+:root {
+  --bg: #10141e;
+  --panel: #1a2130;
+  --panel-2: #222b3d;
+  --text: #eef3ff;
+  --muted: #9eabc3;
+  --border: #33405a;
+  --gold: #ffd76a;
+  --green: #4ed47b;
+  --red: #ef6464;
+  --blue: #63a9ff;
+  --purple: #b27cff;
+}
+
+body {
+  margin: 0;
+  font-family: Inter, system-ui, Arial, sans-serif;
+  background:
+    radial-gradient(circle at 20% 10%, #1b2942 0, transparent 35%),
+    radial-gradient(circle at 85% 20%, #34204f 0, transparent 30%),
+    var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+button {
+  border: 0;
+  border-radius: 12px;
+  padding: 11px 16px;
+  font-weight: 800;
+  cursor: pointer;
+  color: #0f1420;
+}
+
+button:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+
+.game-shell {
+  width: min(1500px, 96%);
+  margin: 0 auto;
+  padding: 22px 0 50px;
+}
+
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(28px, 5vw, 54px);
+  letter-spacing: 2px;
+}
+
+.subtitle {
+  margin: 4px 0 0;
+  color: var(--muted);
+}
+
+.top-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.world-card {
+  margin: 20px 0;
+  background: rgba(26, 33, 48, .92);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 16px;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+}
+
+.world-card > div {
+  background: var(--panel-2);
+  padding: 13px;
+  border-radius: 13px;
+}
+
+.label {
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 1.3px;
+  font-weight: 800;
+}
+
+.big-value {
+  margin-top: 4px;
+  font-size: 19px;
+  font-weight: 900;
+}
+
+.battle-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.25fr 1fr;
+  gap: 16px;
+}
+
+.panel {
+  background: rgba(26, 33, 48, .94);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 18px;
+  box-shadow: 0 15px 40px rgba(0,0,0,.18);
+}
+
+.panel h2 {
+  margin: 0 0 12px;
+}
+
+.center-panel {
+  text-align: center;
+}
+
+.portrait {
+  height: 145px;
+  display: grid;
+  place-items: center;
+  font-size: 90px;
+  background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.01));
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  margin-bottom: 16px;
+}
+
+.hero {
+  background: radial-gradient(circle, rgba(99,169,255,.22), rgba(99,169,255,.02));
+}
+
+.enemy {
+  background: radial-gradient(circle, rgba(239,100,100,.23), rgba(239,100,100,.02));
+}
+
+.bar-wrap {
+  margin: 11px 0;
+}
+
+.bar-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 800;
+  margin-bottom: 5px;
+}
+
+.bar {
+  height: 14px;
+  background: #0d111a;
+  border-radius: 999px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.fill {
+  height: 100%;
+  width: 50%;
+  transition: width .25s ease;
+}
+
+.hp { background: var(--green); }
+.enemyhp { background: var(--red); }
+.xp { background: var(--blue); }
+
+.stats, .enemy-stats {
+  margin: 15px 0;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.stat {
+  background: var(--panel-2);
+  border-radius: 10px;
+  padding: 9px;
+  font-size: 13px;
+}
+
+.gear-box {
+  margin-top: 14px;
+  padding: 12px;
+  background: var(--panel-2);
+  border-radius: 13px;
+}
+
+.gear-box h3 {
+  margin: 0 0 8px;
+}
+
+.gear-box p {
+  margin: 5px 0;
+  font-size: 13px;
+}
+
+.encounter-tag {
+  display: inline-block;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #29354d;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+}
+
+.boss-tag {
+  background: #5a2030;
+  color: #ffc4d0;
+}
+
+.world-boss-tag {
+  background: #5d3c00;
+  color: #ffe39c;
+}
+
+.actions {
+  display: grid;
+  gap: 9px;
+  margin: 16px 0;
+}
+
+.attack {
+  background: linear-gradient(180deg, #ffdd70, #f3b844);
+  font-size: 19px;
+  padding: 15px;
+}
+
+.secondary {
+  background: #dce6ff;
+}
+
+.danger {
+  background: #ffb1b1;
+}
+
+.merchant {
+  background: #c99cff;
+}
+
+.next {
+  background: #8cf0ad;
+}
+
+.battle-log {
+  height: 180px;
+  overflow-y: auto;
+  text-align: left;
+  background: #0f141e;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 11px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.log-line {
+  margin-bottom: 6px;
+}
+
+.tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 5px;
+}
+
+.tab {
+  background: #2a3448;
+  color: var(--muted);
+  padding: 8px;
+}
+
+.tab.active {
+  background: #dfe8ff;
+  color: #111725;
+}
+
+.inventory-list {
+  margin-top: 12px;
+  display: grid;
+  gap: 8px;
+  max-height: 450px;
+  overflow-y: auto;
+}
+
+.item {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px;
+  background: var(--panel-2);
+}
+
+.item-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.item-name {
+  font-weight: 900;
+}
+
+.rank {
+  display: inline-block;
+  min-width: 34px;
+  text-align: center;
+  border-radius: 8px;
+  padding: 3px 7px;
+  font-size: 12px;
+  font-weight: 900;
+  background: #111725;
+  border: 1px solid #495a7b;
+}
+
+.item-desc {
+  color: var(--muted);
+  margin: 6px 0 8px;
+  font-size: 12px;
+}
+
+.item button {
+  width: 100%;
+  padding: 8px;
+  font-size: 12px;
+  background: #cfe0ff;
+}
+
+.merchant-panel {
+  margin-top: 16px;
+}
+
+.merchant-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.merchant-head p {
+  color: var(--muted);
+  margin: 3px 0 0;
+}
+
+.shop-grid {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.shop-item {
+  background: var(--panel-2);
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+}
+
+.shop-item h3 {
+  margin: 4px 0;
+  font-size: 15px;
+}
+
+.shop-item p {
+  color: var(--muted);
+  font-size: 12px;
+  min-height: 32px;
+}
+
+.shop-item button {
+  width: 100%;
+  background: var(--gold);
+}
+
+.roadmap {
+  margin-top: 16px;
+}
+
+.worlds {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.world {
+  background: var(--panel-2);
+  padding: 18px;
+  border-radius: 13px;
+  text-align: center;
+  font-size: 20px;
+  font-weight: 900;
+}
+
+.world small {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.active-world {
+  outline: 2px solid var(--blue);
+}
+
+.locked {
+  opacity: .45;
+}
+
+.roadmap-note {
+  color: var(--muted);
+  margin-bottom: 0;
+}
+
+.hidden {
+  display: none !important;
+}
+
+@media (max-width: 1000px) {
+  .battle-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .world-card {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .shop-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .world-card, .shop-grid, .worlds {
+    grid-template-columns: 1fr;
+  }
+
+  header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+'''
+
+script_js = r'''const RANKS = ["D", "C", "B", "A", "S", "SS", "SSS", "X"];
+
+const weaponCatalog = [
+  { id:"rusty_sword", name:"Rusty Sword", rank:"D", attack:3, price:20, desc:"+3 Attack" },
+  { id:"iron_sword", name:"Iron Sword", rank:"D", attack:6, price:45, desc:"+6 Attack" },
+  { id:"hunter_blade", name:"Hunter Blade", rank:"C", attack:11, price:100, desc:"+11 Attack" },
+  { id:"knight_blade", name:"Knight Blade", rank:"C", attack:16, price:170, desc:"+16 Attack" },
+  { id:"earthsplitter", name:"Earthsplitter", rank:"B", attack:25, price:320, desc:"+25 Attack" },
+  { id:"titan_edge", name:"Titan Edge", rank:"B", attack:35, price:550, desc:"+35 Attack" },
+  { id:"flame_sword", name:"Flame Sword", rank:"A", attack:50, price:900, desc:"+50 Attack · Future rare Earth drop" },
+  { id:"dragon_blade", name:"Dragon Blade", rank:"S", attack:80, price:1800, desc:"+80 Attack · Future world gear" },
+];
+
+const armorCatalog = [
+  { id:"cloth_armor", name:"Cloth Armor", rank:"D", defense:2, hp:5, price:20, desc:"+2 Defense · +5 HP" },
+  { id:"leather_armor", name:"Leather Armor", rank:"D", defense:4, hp:10, price:50, desc:"+4 Defense · +10 HP" },
+  { id:"iron_armor", name:"Iron Armor", rank:"C", defense:8, hp:20, price:120, desc:"+8 Defense · +20 HP" },
+  { id:"knight_armor", name:"Knight Armor", rank:"C", defense:12, hp:35, price:210, desc:"+12 Defense · +35 HP" },
+  { id:"guardian_plate", name:"Guardian Plate", rank:"B", defense:18, hp:60, price:380, desc:"+18 Defense · +60 HP" },
+  { id:"titan_armor", name:"Titan Armor", rank:"B", defense:26, hp:90, price:620, desc:"+26 Defense · +90 HP" },
+];
+
+const petCatalog = [
+  { id:"tiny_slime", name:"Tiny Slime", rank:"D", ability:"heal", power:4, price:70, desc:"Healing · 25% chance to heal 4 HP after attacking" },
+  { id:"wolf_pup", name:"Wolf Pup", rank:"D", ability:"combat", power:4, price:85, desc:"Combat · Deals +4 damage every attack" },
+  { id:"frost_bunny", name:"Frost Bunny", rank:"C", ability:"ice", power:7, price:180, desc:"Ice · 20% chance to freeze enemy for 1 turn" },
+  { id:"spark_fox", name:"Spark Fox", rank:"C", ability:"thunder", power:10, price:220, desc:"Thunder · 20% chance to strike for +10 damage" },
+];
+
+const monsters = [
+  { name:"Green Slime", emoji:"🟢", hp:25, attack:5, defense:0, coins:8, xp:12 },
+  { name:"Wild Rat", emoji:"🐀", hp:30, attack:6, defense:1, coins:10, xp:14 },
+  { name:"Forest Bat", emoji:"🦇", hp:34, attack:7, defense:1, coins:11, xp:16 },
+  { name:"Goblin", emoji:"👺", hp:42, attack:8, defense:2, coins:14, xp:18 },
+  { name:"Wolf", emoji:"🐺", hp:48, attack:10, defense:2, coins:16, xp:21 },
+  { name:"Skeleton", emoji:"💀", hp:55, attack:11, defense:3, coins:18, xp:24 },
+  { name:"Orc", emoji:"👹", hp:66, attack:13, defense:4, coins:21, xp:27 },
+  { name:"Stone Golem", emoji:"🗿", hp:78, attack:14, defense:6, coins:24, xp:31 },
+];
+
+const bosses = [
+  { round:10, name:"Goblin King", emoji:"👑", hp:170, attack:16, defense:5, coins:80, xp:80 },
+  { round:20, name:"Dire Wolf Alpha", emoji:"🐺", hp:270, attack:22, defense:7, coins:120, xp:120 },
+  { round:30, name:"Skeleton Warlord", emoji:"☠️", hp:400, attack:29, defense:10, coins:170, xp:170 },
+  { round:40, name:"Cave Troll", emoji:"🧌", hp:560, attack:36, defense:12, coins:230, xp:230 },
+  { round:50, name:"Ancient Golem", emoji:"🗿", hp:760, attack:45, defense:16, coins:300, xp:300 },
+  { round:60, name:"Storm Griffin", emoji:"🦅", hp:980, attack:55, defense:18, coins:390, xp:390 },
+  { round:70, name:"Dread Knight", emoji:"🗡️", hp:1250, attack:66, defense:22, coins:500, xp:500 },
+  { round:80, name:"Earth Hydra", emoji:"🐉", hp:1600, attack:78, defense:26, coins:650, xp:650 },
+  { round:90, name:"Ancient Dragon", emoji:"🐲", hp:2050, attack:92, defense:30, coins:850, xp:850 },
+  { round:100, name:"EARTH TITAN", emoji:"🌎", hp:3000, attack:115, defense:36, coins:1500, xp:1500, worldBoss:true },
+];
+
+const defaultState = () => ({
+  round: 1,
+  world: 1,
+  coins: 0,
+  eventCoins: 0,
+  level: 1,
+  xp: 0,
+  xpToNext: 50,
+  baseMaxHp: 100,
+  hp: 100,
+  baseAttack: 10,
+  baseDefense: 2,
+  potions: 2,
+  weapons: [],
+  armor: [],
+  pets: [],
+  equippedWeapon: null,
+  equippedArmor: null,
+  equippedPet: null,
+  enemy: null,
+  enemyHp: 0,
+  battleWon: false,
+  merchantAvailable: false,
+  frozenEnemy: false,
+});
+
+let state = loadState() || defaultState();
+let currentTab = "weapons";
+
+const el = id => document.getElementById(id);
+
+function rankIndex(rank) {
+  return RANKS.indexOf(rank);
+}
+
+function getWeapon() {
+  return weaponCatalog.find(i => i.id === state.equippedWeapon);
+}
+
+function getArmor() {
+  return armorCatalog.find(i => i.id === state.equippedArmor);
+}
+
+function getPet() {
+  return petCatalog.find(i => i.id === state.equippedPet);
+}
+
+function maxHp() {
+  const armor = getArmor();
+  return state.baseMaxHp + (armor?.hp || 0);
+}
+
+function totalAttack() {
+  const weapon = getWeapon();
+  return state.baseAttack + (weapon?.attack || 0);
+}
+
+function totalDefense() {
+  const armor = getArmor();
+  return state.baseDefense + (armor?.defense || 0);
+}
+
+function saveState(showMessage = true) {
+  localStorage.setItem("rankbound_save_v01", JSON.stringify(state));
+  if (showMessage) addLog("💾 Game saved.");
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem("rankbound_save_v01");
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function resetGame() {
+  if (!confirm("Reset ALL progress? This cannot be undone.")) return;
+  localStorage.removeItem("rankbound_save_v01");
+  state = defaultState();
+  spawnEnemy();
+  addLog("🌍 A new adventure begins on Earth.");
+  render();
+}
+
+function worldName() {
+  if (state.round <= 100) return "🌍 Earth";
+  if (state.round <= 200) return "🍄 Mushroom Planet";
+  if (state.round <= 300) return "☀️ Sun World";
+  return "🌌 Unknown World";
+}
+
+function scaleForRound(round) {
+  return 1 + (round - 1) * 0.085;
+}
+
+function spawnEnemy() {
+  state.battleWon = false;
+  state.frozenEnemy = false;
+
+  const bossTemplate = bosses.find(b => b.round === state.round);
+  if (bossTemplate) {
+    state.enemy = { ...bossTemplate, boss:true };
+  } else {
+    const m = monsters[Math.min(monsters.length - 1, Math.floor((state.round - 1) / 4))];
+    const scale = scaleForRound(state.round);
+    state.enemy = {
+      ...m,
+      hp: Math.round(m.hp * scale),
+      attack: Math.round(m.attack * (1 + (state.round - 1) * 0.055)),
+      defense: Math.round(m.defense + state.round * 0.12),
+      coins: Math.round(m.coins * (1 + state.round * 0.06)),
+      xp: Math.round(m.xp * (1 + state.round * 0.045)),
+      boss:false
+    };
+  }
+
+  state.enemyHp = state.enemy.hp;
+  addLog(`⚠️ ${state.enemy.name} appeared!`);
+  render();
+}
+
+function addLog(message) {
+  const log = el("battleLog");
+  if (!log) return;
+  const line = document.createElement("div");
+  line.className = "log-line";
+  line.textContent = message;
+  log.prepend(line);
+}
+
+function attackEnemy() {
+  if (state.battleWon || state.hp <= 0) return;
+
+  const crit = Math.random() < 0.12;
+  let damage = Math.max(1, totalAttack() - state.enemy.defense + Math.floor(Math.random() * 5));
+  if (crit) damage = Math.round(damage * 1.8);
+
+  const pet = getPet();
+
+  if (pet?.ability === "combat") {
+    damage += pet.power;
+    addLog(`🐾 ${pet.name} joins your attack for +${pet.power} damage!`);
+  }
+
+  if (pet?.ability === "thunder" && Math.random() < 0.20) {
+    damage += pet.power;
+    addLog(`⚡ ${pet.name} calls lightning for +${pet.power} damage!`);
+  }
+
+  if (pet?.ability === "ice" && Math.random() < 0.20) {
+    state.frozenEnemy = true;
+    addLog(`❄️ ${pet.name} freezes the enemy!`);
+  }
+
+  state.enemyHp = Math.max(0, state.enemyHp - damage);
+  addLog(`${crit ? "💥 CRITICAL! " : "⚔️ "}You deal ${damage} damage.`);
+
+  if (pet?.ability === "heal" && Math.random() < 0.25) {
+    const oldHp = state.hp;
+    state.hp = Math.min(maxHp(), state.hp + pet.power);
+    addLog(`💚 ${pet.name} heals you for ${state.hp - oldHp} HP.`);
+  }
+
+  if (state.enemyHp <= 0) {
+    winBattle();
+    return;
+  }
+
+  enemyTurn();
+  render();
+}
+
+function enemyTurn() {
+  if (state.frozenEnemy) {
+    state.frozenEnemy = false;
+    addLog(`🧊 ${state.enemy.name} is frozen and misses its turn!`);
+    return;
+  }
+
+  const damage = Math.max(1, state.enemy.attack - totalDefense() + Math.floor(Math.random() * 4));
+  state.hp = Math.max(0, state.hp - damage);
+  addLog(`💢 ${state.enemy.name} hits you for ${damage} damage.`);
+
+  if (state.hp <= 0) {
+    const lost = Math.floor(state.coins * 0.10);
+    state.coins -= lost;
+    state.hp = maxHp();
+    addLog(`💀 You were defeated. You lost ${lost} coins and recovered at camp.`);
+    spawnEnemy();
+  }
+}
+
+function winBattle() {
+  state.battleWon = true;
+  state.coins += state.enemy.coins;
+  gainXp(state.enemy.xp);
+  addLog(`🏆 Victory! +${state.enemy.coins} coins and +${state.enemy.xp} XP.`);
+
+  if (state.enemy.boss) {
+    const chance = state.enemy.worldBoss ? 0.75 : 0.30;
+    if (Math.random() < chance) {
+      const amount = state.enemy.worldBoss ? 3 : 1;
+      state.eventCoins += amount;
+      addLog(`✨ Boss drop! You found ${amount} Event Coin${amount > 1 ? "s" : ""}!`);
+    }
+
+    bossDrop();
+  } else {
+    normalDrop();
+  }
+
+  if (state.round % 5 === 0 || Math.random() < 0.15) {
+    state.merchantAvailable = true;
+    addLog("🧙 A wandering merchant has appeared.");
+  } else {
+    state.merchantAvailable = false;
+  }
+
+  saveState(false);
+  render();
+}
+
+function gainXp(amount) {
+  state.xp += amount;
+
+  while (state.xp >= state.xpToNext) {
+    state.xp -= state.xpToNext;
+    state.level++;
+    state.xpToNext = Math.round(state.xpToNext * 1.22);
+    state.baseMaxHp += 12;
+    state.baseAttack += 3;
+    state.baseDefense += 1;
+    state.hp = maxHp();
+    addLog(`🌟 LEVEL UP! You are now Level ${state.level}. Your stats increased!`);
+  }
+}
+
+function normalDrop() {
+  if (Math.random() > 0.17) return;
+
+  const possible = [
+    ...weaponCatalog.filter(i => rankIndex(i.rank) <= 1),
+    ...armorCatalog.filter(i => rankIndex(i.rank) <= 1)
+  ];
+  const item = possible[Math.floor(Math.random() * possible.length)];
+  addItem(item);
+  addLog(`🎁 Rare drop: ${item.rank}-Rank ${item.name}!`);
+}
+
+function bossDrop() {
+  const maxRank = state.round >= 70 ? 2 : state.round >= 30 ? 1 : 0;
+  const pool = [
+    ...weaponCatalog.filter(i => rankIndex(i.rank) <= maxRank),
+    ...armorCatalog.filter(i => rankIndex(i.rank) <= maxRank),
+    ...petCatalog.filter(i => rankIndex(i.rank) <= Math.min(1, maxRank))
+  ];
+  const item = pool[Math.floor(Math.random() * pool.length)];
+  addItem(item);
+  addLog(`👑 BOSS DROP: ${item.rank}-Rank ${item.name}!`);
+}
+
+function addItem(item) {
+  if (weaponCatalog.some(i => i.id === item.id)) {
+    if (!state.weapons.includes(item.id)) state.weapons.push(item.id);
+  } else if (armorCatalog.some(i => i.id === item.id)) {
+    if (!state.armor.includes(item.id)) state.armor.push(item.id);
+  } else if (petCatalog.some(i => i.id === item.id)) {
+    if (!state.pets.includes(item.id)) state.pets.push(item.id);
+  }
+}
+
+function usePotion() {
+  if (state.potions <= 0 || state.hp >= maxHp() || state.battleWon) return;
+  const heal = Math.round(maxHp() * 0.40);
+  const before = state.hp;
+  state.hp = Math.min(maxHp(), state.hp + heal);
+  state.potions--;
+  addLog(`🧪 Potion restores ${state.hp - before} HP.`);
+  enemyTurn();
+  render();
+}
+
+function nextRound() {
+  if (!state.battleWon) return;
+
+  if (state.round === 100) {
+    addLog("🌌 EARTH COMPLETE! The portal to Mushroom Planet will open in a future update!");
+    alert("🌍 EARTH COMPLETE!\n\nYou defeated the Earth Titan!\n\n🍄 Mushroom Planet is planned for Version 0.2+.");
+    return;
+  }
+
+  state.round++;
+  state.hp = Math.min(maxHp(), state.hp + Math.round(maxHp() * 0.15));
+  state.merchantAvailable = false;
+  spawnEnemy();
+  saveState(false);
+}
+
+function equip(type, id) {
+  if (type === "weapons") state.equippedWeapon = id;
+  if (type === "armor") {
+    const oldMax = maxHp();
+    state.equippedArmor = id;
+    const newMax = maxHp();
+    state.hp = Math.min(newMax, state.hp + Math.max(0, newMax - oldMax));
+  }
+  if (type === "pets") state.equippedPet = id;
+
+  const catalog = type === "weapons" ? weaponCatalog : type === "armor" ? armorCatalog : petCatalog;
+  const item = catalog.find(i => i.id === id);
+  addLog(`✅ Equipped ${item.name}.`);
+  saveState(false);
+  render();
+}
+
+function merchantStock() {
+  const allowedRank = state.round >= 60 ? 2 : state.round >= 25 ? 1 : 0;
+
+  let pool = [
+    ...weaponCatalog.filter(i => rankIndex(i.rank) <= allowedRank),
+    ...armorCatalog.filter(i => rankIndex(i.rank) <= allowedRank),
+    ...petCatalog.filter(i => rankIndex(i.rank) <= Math.min(1, allowedRank))
+  ];
+
+  pool = [...pool].sort(() => Math.random() - 0.5).slice(0, 5);
+
+  return [
+    ...pool,
+    { id:"potion_shop", name:"Health Potion", rank:"D", price:35, shopType:"potion", desc:"Restores 40% max HP in battle." }
+  ];
+}
+
+let currentMerchantStock = [];
+
+function openMerchant() {
+  if (!state.merchantAvailable) return;
+  currentMerchantStock = merchantStock();
+  el("merchantPanel").classList.remove("hidden");
+  renderMerchant();
+}
+
+function renderMerchant() {
+  const box = el("merchantItems");
+  box.innerHTML = "";
+
+  currentMerchantStock.forEach(item => {
+    const owned =
+      state.weapons.includes(item.id) ||
+      state.armor.includes(item.id) ||
+      state.pets.includes(item.id);
+
+    const div = document.createElement("div");
+    div.className = "shop-item";
+    div.innerHTML = `
+      <span class="rank">${item.rank}</span>
+      <h3>${item.name}</h3>
+      <p>${item.desc}</p>
+      <button ${owned && item.shopType !== "potion" ? "disabled" : ""}>
+        ${owned && item.shopType !== "potion" ? "Owned" : `Buy · ${item.price} 🪙`}
+      </button>
+    `;
+
+    div.querySelector("button").onclick = () => buyItem(item);
+    box.appendChild(div);
+  });
+}
+
+function buyItem(item) {
+  if (state.coins < item.price) {
+    addLog("❌ Not enough coins.");
+    return;
+  }
+
+  state.coins -= item.price;
+
+  if (item.shopType === "potion") {
+    state.potions++;
+    addLog("🧪 Bought 1 Health Potion.");
+  } else {
+    addItem(item);
+    addLog(`🛒 Bought ${item.rank}-Rank ${item.name}.`);
+  }
+
+  saveState(false);
+  render();
+  renderMerchant();
+}
+
+function renderInventory() {
+  const box = el("inventoryList");
+  box.innerHTML = "";
+
+  const catalog = currentTab === "weapons" ? weaponCatalog : currentTab === "armor" ? armorCatalog : petCatalog;
+  const ownedIds = currentTab === "weapons" ? state.weapons : currentTab === "armor" ? state.armor : state.pets;
+  const equippedId = currentTab === "weapons" ? state.equippedWeapon : currentTab === "armor" ? state.equippedArmor : state.equippedPet;
+
+  if (ownedIds.length === 0) {
+    box.innerHTML = `<div class="item"><div class="item-desc">No ${currentTab} yet. Defeat monsters, bosses, or visit merchants.</div></div>`;
+    return;
+  }
+
+  ownedIds
+    .map(id => catalog.find(i => i.id === id))
+    .filter(Boolean)
+    .sort((a,b) => rankIndex(b.rank) - rankIndex(a.rank))
+    .forEach(item => {
+      const div = document.createElement("div");
+      div.className = "item";
+      div.innerHTML = `
+        <div class="item-top">
+          <div class="item-name">${item.name}</div>
+          <span class="rank">${item.rank}</span>
+        </div>
+        <div class="item-desc">${item.desc}</div>
+        <button ${equippedId === item.id ? "disabled" : ""}>
+          ${equippedId === item.id ? "Equipped" : "Equip"}
+        </button>
+      `;
+      div.querySelector("button").onclick = () => equip(currentTab, item.id);
+      box.appendChild(div);
+    });
+}
+
+function render() {
+  if (!state.enemy) spawnEnemy();
+
+  el("worldName").textContent = worldName();
+  el("roundText").textContent = `${state.round} / 100`;
+  el("levelText").textContent = state.level;
+  el("coinText").textContent = `${state.coins} 🪙`;
+  el("eventCoinText").textContent = `${state.eventCoins} ✨`;
+
+  el("playerHpText").textContent = `${state.hp} / ${maxHp()}`;
+  el("playerHpBar").style.width = `${Math.max(0, state.hp / maxHp() * 100)}%`;
+
+  el("xpText").textContent = `${state.xp} / ${state.xpToNext}`;
+  el("xpBar").style.width = `${Math.min(100, state.xp / state.xpToNext * 100)}%`;
+
+  el("playerStats").innerHTML = `
+    <div class="stat">⚔️ Attack<br><b>${totalAttack()}</b></div>
+    <div class="stat">🛡️ Defense<br><b>${totalDefense()}</b></div>
+    <div class="stat">❤️ Max HP<br><b>${maxHp()}</b></div>
+    <div class="stat">🧪 Potions<br><b>${state.potions}</b></div>
+  `;
+
+  const weapon = getWeapon();
+  const armor = getArmor();
+  const pet = getPet();
+
+  el("weaponText").textContent = `Weapon: ${weapon ? `[${weapon.rank}] ${weapon.name}` : "None"}`;
+  el("armorText").textContent = `Armor: ${armor ? `[${armor.rank}] ${armor.name}` : "None"}`;
+  el("petText").textContent = `Pet: ${pet ? `[${pet.rank}] ${pet.name}` : "None"}`;
+
+  el("enemyName").textContent = state.enemy.name;
+  el("enemyEmoji").textContent = state.enemy.emoji;
+  el("enemyHpText").textContent = `${state.enemyHp} / ${state.enemy.hp}`;
+  el("enemyHpBar").style.width = `${Math.max(0, state.enemyHp / state.enemy.hp * 100)}%`;
+
+  el("enemyStats").innerHTML = `
+    <div class="stat">⚔️ Attack<br><b>${state.enemy.attack}</b></div>
+    <div class="stat">🛡️ Defense<br><b>${state.enemy.defense}</b></div>
+    <div class="stat">🪙 Reward<br><b>${state.enemy.coins}</b></div>
+    <div class="stat">⭐ XP<br><b>${state.enemy.xp}</b></div>
+  `;
+
+  const tag = el("encounterTag");
+  if (state.enemy.worldBoss) {
+    tag.textContent = "🌎 WORLD BOSS";
+    tag.className = "encounter-tag world-boss-tag";
+  } else if (state.enemy.boss) {
+    tag.textContent = "👑 BOSS ENCOUNTER";
+    tag.className = "encounter-tag boss-tag";
+  } else {
+    tag.textContent = "NORMAL ENCOUNTER";
+    tag.className = "encounter-tag";
+  }
+
+  el("attackBtn").disabled = state.battleWon;
+  el("healBtn").disabled = state.battleWon || state.potions <= 0 || state.hp >= maxHp();
+  el("potionCount").textContent = state.potions;
+
+  el("nextBtn").classList.toggle("hidden", !state.battleWon);
+  el("merchantBtn").classList.toggle("hidden", !(state.battleWon && state.merchantAvailable));
+
+  renderInventory();
+}
+
+document.querySelectorAll(".tab").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".tab").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    currentTab = btn.dataset.tab;
+    renderInventory();
+  });
+});
+
+el("attackBtn").onclick = attackEnemy;
+el("healBtn").onclick = usePotion;
+el("nextBtn").onclick = nextRound;
+el("merchantBtn").onclick = openMerchant;
+el("closeMerchantBtn").onclick = () => el("merchantPanel").classList.add("hidden");
+el("saveBtn").onclick = () => saveState(true);
+el("resetBtn").onclick = resetGame;
+
+if (!state.enemy) spawnEnemy();
+render();
+addLog("⚔️ Welcome to Rankbound. Defeat monsters, level up, collect gear, and conquer Earth!");
+'''
+
+readme = r'''# ⚔️ Rankbound
+
+A browser battle RPG built with HTML, CSS, and JavaScript.
+
+## Version 0.1
+
+Current features:
+
+- Earth: Rounds 1–100
+- Boss every 10 rounds
+- World Boss at Round 100
+- Character levels and XP
+- Coins
+- Event Coins from bosses
+- Weapons and armor
+- Rank system: D, C, B, A, S, SS, SSS, X
+- Pets with healing, combat, ice, and thunder abilities
+- Wandering merchants
+- Item drops
+- Health potions
+- Local browser save system
+- Future worlds displayed: Mushroom Planet and Sun World
+
+## How to play locally
+
+Open `index.html` in a browser.
+
+## GitHub Pages
+
+Upload these files to a GitHub repository, then enable GitHub Pages for the repository to make the game playable online.
+
+## Planned updates
+
+- Mushroom Planet: Rounds 101–200
+- Sun World: Rounds 201–300
+- Event Shop
+- Event pets
+- More weapons and armor
+- S / SS / SSS / X gear
+- More boss abilities
+- Better graphics and animations
+- Character abilities
+- More worlds
+'''
+
+(base / "index.html").write_text(index_html, encoding="utf-8")
+(base / "style.css").write_text(style_css, encoding="utf-8")
+(base / "script.js").write_text(script_js, encoding="utf-8")
+(base / "README.md").write_text(readme, encoding="utf-8")
+
+zip_path = Path("/mnt/data/rankbound_v0_1.zip")
+with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as z:
+    for f in base.iterdir():
+        z.write(f, arcname=f.name)
+
+print(f"Created: {zip_path}")
+print("Files:", ", ".join(p.name for p in base.iterdir()))
