@@ -1,1206 +1,985 @@
-
-from pathlib import Path
-import textwrap, zipfile, json, os, re, math, random
-
-base = Path("/mnt/data/rankbound_v0_1")
-base.mkdir(exist_ok=True)
-
-index_html = r'''<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Rankbound - Version 0.1</title>
-  <link rel="stylesheet" href="style.css" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>RealmRiser</title>
+<style>
+*{box-sizing:border-box}
+:root{
+  --bg:#070b12;--panel:#111827;--panel2:#1b2537;--line:#31405c;
+  --text:#eef4ff;--muted:#9eabc3;--gold:#ffd35f;--green:#58d67a;
+  --red:#ef6464;--blue:#64a8ff;--purple:#b984ff;--cyan:#66e8ff;
+}
+body{margin:0;background:radial-gradient(circle at 20% 0,#132849 0,transparent 32%),var(--bg);color:var(--text);font-family:Arial,Helvetica,sans-serif}
+button{border:0;border-radius:12px;padding:11px 14px;font-weight:900;cursor:pointer;color:#0d1320}
+button:disabled{opacity:.45;cursor:not-allowed}
+.hidden{display:none!important}
+#app{width:min(1280px,98%);margin:auto;padding:12px 0 40px}
+.topbar{display:flex;justify-content:space-between;align-items:center;gap:12px;background:rgba(17,24,39,.96);border:1px solid var(--line);border-radius:16px;padding:12px 14px;margin-bottom:10px}
+.logo{font-size:30px;font-weight:1000;letter-spacing:1.3px}
+.sub{font-size:12px;color:var(--muted);margin-top:3px}
+.pills{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}
+.pill{background:#202b40;border:1px solid #3a4b6a;border-radius:999px;padding:7px 10px;font-size:12px;font-weight:800}
+.stage{border:1px solid var(--line);border-radius:18px;overflow:hidden;background:#111827;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+canvas{display:block;width:100%;background:#172235}
+.hud{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;padding:11px;background:#0f1622;border-top:1px solid var(--line)}
+.hudBox{background:#151e2d;border:1px solid #293852;border-radius:12px;padding:9px}
+.row{display:flex;justify-content:space-between;font-size:12px;font-weight:800;color:#cbd5e8;margin:3px 0 5px}
+.bar{height:13px;background:#06090e;border:1px solid #2d3b55;border-radius:999px;overflow:hidden}
+.fill{height:100%;transition:width .18s}
+#heroHpFill{background:var(--green)}#enemyHpFill{background:var(--red)}#xpFill{background:var(--blue)}#chargeFill{background:linear-gradient(90deg,#8a5cff,#e0a8ff)}#petChargeFill{background:linear-gradient(90deg,#50d9ff,#88f0cb)}
+.status{min-height:43px;padding:10px 13px;background:#0d131d;border-top:1px solid var(--line);font-size:13px;color:#b8c5da}
+.mainControls{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;padding:10px;background:#0b111b;border-top:1px solid var(--line)}
+.mainControls button{padding:12px 8px}
+#attackBtn{background:var(--gold)}
+#movesBtn{background:#ff9872}
+#petMovesBtn{background:#7be7dc}
+#inventoryBtn{background:#abc8ff}
+#shopBtn{background:#d4adff}
+
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.74);display:flex;align-items:center;justify-content:center;z-index:50;padding:14px}
+.modal{width:min(850px,97vw);max-height:90vh;overflow:auto;background:#151d2b;border:1px solid #3a4a68;border-radius:18px;padding:15px}
+.modalHead{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:12px}
+.modal h2{margin:0}
+.close{background:#dfe8fb}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:11px}
+.tab{background:#2a354b;color:#dce4f5;padding:8px 11px}
+.tab.active{background:#dde8ff;color:#111725}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}
+.card{background:#202a3d;border:1px solid #354661;border-radius:13px;padding:11px}
+.card.equipped{outline:2px solid #64a8ff}
+.cardTop{display:flex;justify-content:space-between;gap:8px;align-items:center}
+.cardTitle{font-weight:900}
+.rank{border:1px solid #62749a;border-radius:7px;padding:3px 7px;font-size:11px;font-weight:900;background:#0e1522}
+.desc{font-size:12px;color:#aebbd3;line-height:1.4;margin:7px 0 10px}
+.card button{width:100%;background:#dce8ff;padding:9px}
+.shopCard button{background:var(--gold)}
+.moveGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}
+.moveBtn{padding:16px;text-align:left;background:#293650;color:white;border:1px solid #425475}
+.moveBtn strong{display:block;font-size:15px}
+.moveBtn span{display:block;color:#c1cce0;font-size:11px;margin-top:4px}
+.moveBtn.locked{opacity:.45}
+.eggGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.egg{background:#1e293b;border:1px solid #3a4b69;border-radius:14px;padding:12px;text-align:center}
+.eggArt{height:100px;display:grid;place-items:center;margin-bottom:8px}
+.eggShape{width:68px;height:86px;border-radius:50% 50% 46% 46% / 58% 58% 42% 42%;border:3px solid rgba(255,255,255,.65);box-shadow:inset 0 -10px 18px rgba(0,0,0,.25)}
+.eggCommon{background:linear-gradient(#f4e4bf,#b69867)}
+.eggIce{background:linear-gradient(#bff4ff,#459fe9)}
+.eggStorm{background:linear-gradient(#f9e76d,#7b5be7)}
+.eggVoid{background:linear-gradient(#33204d,#05040a)}
+.eggDragon{background:linear-gradient(#ff9c63,#922b29)}
+.eggEvent{background:linear-gradient(#ffccf6,#7d6cff)}
+.egg button{width:100%;background:#dce7ff}
+.rarityD{color:#cfd6df}.rarityC{color:#72d88c}.rarityB{color:#6fb4ff}.rarityA{color:#c687ff}.rarityS{color:#ffd45f}.raritySS{color:#ff9c5e}.raritySSS{color:#ff6db1}.rarityX{color:#8efcff}
+.toast{position:fixed;left:50%;top:18px;transform:translateX(-50%);z-index:90;background:#111827;border:1px solid #495b7a;border-radius:12px;padding:10px 14px;font-weight:900;box-shadow:0 10px 30px rgba(0,0,0,.4)}
+.worldStrip{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:10px}
+.worldCard{background:#121a28;border:1px solid #2e3d57;border-radius:13px;padding:12px;text-align:center}
+.worldCard.locked{opacity:.42}
+.worldCard.current{outline:2px solid #64a8ff}
+@media(max-width:900px){.hud{grid-template-columns:1fr}.grid,.moveGrid{grid-template-columns:1fr}.eggGrid{grid-template-columns:repeat(2,1fr)}.mainControls{grid-template-columns:repeat(2,1fr)}.mainControls button:last-child{grid-column:1/-1}}
+@media(max-width:600px){.topbar{align-items:flex-start;flex-direction:column}.pills{justify-content:flex-start}.eggGrid,.worldStrip{grid-template-columns:1fr}.logo{font-size:24px}}
+</style>
 </head>
 <body>
-  <div class="game-shell">
-    <header>
-      <div>
-        <h1>⚔️ RANKBOUND</h1>
-        <p class="subtitle">Earth · Version 0.1</p>
-      </div>
-      <div class="top-buttons">
-        <button id="saveBtn" class="secondary">💾 Save</button>
-        <button id="resetBtn" class="danger">↻ Reset</button>
-      </div>
-    </header>
-
-    <section class="world-card">
-      <div>
-        <div class="label">WORLD</div>
-        <div id="worldName" class="big-value">🌍 Earth</div>
-      </div>
-      <div>
-        <div class="label">ROUND</div>
-        <div id="roundText" class="big-value">1 / 100</div>
-      </div>
-      <div>
-        <div class="label">CHARACTER LEVEL</div>
-        <div id="levelText" class="big-value">1</div>
-      </div>
-      <div>
-        <div class="label">COINS</div>
-        <div id="coinText" class="big-value">0 🪙</div>
-      </div>
-      <div>
-        <div class="label">EVENT COINS</div>
-        <div id="eventCoinText" class="big-value">0 ✨</div>
-      </div>
-    </section>
-
-    <main class="battle-grid">
-      <section class="panel player-panel">
-        <h2>🧑 Hero</h2>
-        <div class="portrait hero">🛡️</div>
-
-        <div class="bar-wrap">
-          <div class="bar-label"><span>HP</span><span id="playerHpText"></span></div>
-          <div class="bar"><div id="playerHpBar" class="fill hp"></div></div>
-        </div>
-
-        <div class="bar-wrap">
-          <div class="bar-label"><span>XP</span><span id="xpText"></span></div>
-          <div class="bar"><div id="xpBar" class="fill xp"></div></div>
-        </div>
-
-        <div class="stats" id="playerStats"></div>
-
-        <div class="gear-box">
-          <h3>Equipped</h3>
-          <p id="weaponText">Weapon: None</p>
-          <p id="armorText">Armor: None</p>
-          <p id="petText">Pet: None</p>
-        </div>
-      </section>
-
-      <section class="panel center-panel">
-        <div id="encounterTag" class="encounter-tag">NORMAL ENCOUNTER</div>
-        <h2 id="enemyName">Slime</h2>
-        <div id="enemyEmoji" class="portrait enemy">🟢</div>
-
-        <div class="bar-wrap">
-          <div class="bar-label"><span>ENEMY HP</span><span id="enemyHpText"></span></div>
-          <div class="bar"><div id="enemyHpBar" class="fill enemyhp"></div></div>
-        </div>
-
-        <div id="enemyStats" class="enemy-stats"></div>
-
-        <div class="actions">
-          <button id="attackBtn" class="attack">⚔️ ATTACK</button>
-          <button id="healBtn" class="secondary">🧪 Potion (<span id="potionCount">2</span>)</button>
-          <button id="merchantBtn" class="merchant hidden">🧙 Visit Merchant</button>
-          <button id="nextBtn" class="next hidden">➡️ Next Round</button>
-        </div>
-
-        <div id="battleLog" class="battle-log"></div>
-      </section>
-
-      <section class="panel inventory-panel">
-        <h2>🎒 Inventory</h2>
-        <div class="tabs">
-          <button class="tab active" data-tab="weapons">Weapons</button>
-          <button class="tab" data-tab="armor">Armor</button>
-          <button class="tab" data-tab="pets">Pets</button>
-        </div>
-        <div id="inventoryList" class="inventory-list"></div>
-      </section>
-    </main>
-
-    <section id="merchantPanel" class="panel merchant-panel hidden">
-      <div class="merchant-head">
-        <div>
-          <h2>🧙 Wandering Merchant</h2>
-          <p>"Spend wisely, warrior. Better ranks cost more."</p>
-        </div>
-        <button id="closeMerchantBtn" class="secondary">Close</button>
-      </div>
-      <div id="merchantItems" class="shop-grid"></div>
-    </section>
-
-    <section class="panel roadmap">
-      <h2>🌌 World Roadmap</h2>
-      <div class="worlds">
-        <div class="world active-world">🌍 Earth<br><small>Rounds 1–100</small></div>
-        <div class="world locked">🍄 Mushroom Planet<br><small>Rounds 101–200</small></div>
-        <div class="world locked">☀️ Sun World<br><small>Rounds 201–300</small></div>
-      </div>
-      <p class="roadmap-note">Boss every 10 rounds. World Boss every 100 rounds. More worlds, monsters, gear, pets and events can be added in future updates.</p>
-    </section>
+<div id="app">
+  <div class="topbar">
+    <div>
+      <div class="logo">REALMRISER</div>
+      <div class="sub" id="worldLabel">Earth · Wave 1</div>
+    </div>
+    <div class="pills">
+      <div class="pill">Lv <span id="levelText">1</span></div>
+      <div class="pill">Coins <span id="coinText">0</span></div>
+      <div class="pill">Event <span id="eventCoinText">0</span></div>
+      <div class="pill">Eggs <span id="eggCountText">0</span></div>
+      <div class="pill">Pet <span id="petTopText">None</span></div>
+    </div>
   </div>
 
-  <script src="script.js"></script>
+  <div class="stage">
+    <canvas id="game" width="1180" height="590"></canvas>
+
+    <div class="hud">
+      <div class="hudBox">
+        <div class="row"><span>Hero HP</span><span id="heroHpText"></span></div>
+        <div class="bar"><div id="heroHpFill" class="fill"></div></div>
+        <div class="row" style="margin-top:7px"><span>XP</span><span id="xpText"></span></div>
+        <div class="bar"><div id="xpFill" class="fill"></div></div>
+      </div>
+      <div class="hudBox">
+        <div class="row"><span id="enemyNameText">Enemy</span><span id="enemyHpText"></span></div>
+        <div class="bar"><div id="enemyHpFill" class="fill"></div></div>
+        <div class="row" style="margin-top:7px"><span>Wave</span><span id="waveProgressText"></span></div>
+      </div>
+      <div class="hudBox">
+        <div class="row"><span>Hero Charge</span><span id="chargeText">0 / 100</span></div>
+        <div class="bar"><div id="chargeFill" class="fill"></div></div>
+        <div class="row" style="margin-top:7px"><span>Pet Charge</span><span id="petChargeText">0 / 100</span></div>
+        <div class="bar"><div id="petChargeFill" class="fill"></div></div>
+      </div>
+    </div>
+
+    <div class="mainControls">
+      <button id="attackBtn">BASIC ATTACK</button>
+      <button id="movesBtn">HERO MOVES</button>
+      <button id="petMovesBtn">PET MOVES</button>
+      <button id="inventoryBtn">INVENTORY</button>
+      <button id="shopBtn">SHOP / EGGS</button>
+    </div>
+
+    <div class="status" id="statusLine">Defeat the monsters in this wave.</div>
+  </div>
+
+  <div class="worldStrip">
+    <div class="worldCard current">Earth<div class="sub">Waves 1–100</div></div>
+    <div class="worldCard locked">Mushroom Planet<div class="sub">Waves 101–200</div></div>
+    <div class="worldCard locked">Sun World<div class="sub">Waves 201–300</div></div>
+  </div>
+</div>
+
+<div id="inventoryOverlay" class="overlay hidden">
+  <div class="modal">
+    <div class="modalHead">
+      <div><h2>Inventory</h2><div class="sub">Equip weapons, armor, and pets.</div></div>
+      <button id="closeInventory" class="close">Close</button>
+    </div>
+    <div class="tabs">
+      <button class="tab active" data-invtab="weapons">Weapons</button>
+      <button class="tab" data-invtab="armor">Armor</button>
+      <button class="tab" data-invtab="pets">Pets</button>
+    </div>
+    <div id="inventoryGrid" class="grid"></div>
+  </div>
+</div>
+
+<div id="shopOverlay" class="overlay hidden">
+  <div class="modal">
+    <div class="modalHead">
+      <div><h2>Merchant & Hatchery</h2><div class="sub">Buy gear or hatch different kinds of eggs.</div></div>
+      <button id="closeShop" class="close">Close</button>
+    </div>
+    <div class="tabs">
+      <button class="tab active" data-shoptab="gear">Gear</button>
+      <button class="tab" data-shoptab="eggs">Eggs</button>
+      <button class="tab" data-shoptab="hatch">Hatch</button>
+    </div>
+    <div id="shopContent"></div>
+  </div>
+</div>
+
+<div id="heroMovesOverlay" class="overlay hidden">
+  <div class="modal">
+    <div class="modalHead">
+      <div><h2>Hero Moves</h2><div class="sub">Special moves need charge. Basic attacks build charge.</div></div>
+      <button id="closeHeroMoves" class="close">Close</button>
+    </div>
+    <div id="heroMoveGrid" class="moveGrid"></div>
+  </div>
+</div>
+
+<div id="petMovesOverlay" class="overlay hidden">
+  <div class="modal">
+    <div class="modalHead">
+      <div><h2>Pet Moves</h2><div class="sub">Your equipped pet fights with you and has its own charge.</div></div>
+      <button id="closePetMoves" class="close">Close</button>
+    </div>
+    <div id="petMoveGrid" class="moveGrid"></div>
+  </div>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+
+<script>
+const canvas=document.getElementById("game");
+const ctx=canvas.getContext("2d");
+const RANKS=["D","C","B","A","S","SS","SSS","X"];
+
+const WEAPONS=[
+{id:"wood_sword",name:"Wood Sword",rank:"D",attack:3,price:20},
+{id:"iron_sword",name:"Iron Sword",rank:"D",attack:7,price:60},
+{id:"hunter_blade",name:"Hunter Blade",rank:"C",attack:14,price:150},
+{id:"knight_blade",name:"Knight Blade",rank:"C",attack:22,price:260},
+{id:"earthsplitter",name:"Earthsplitter",rank:"B",attack:34,price:450},
+{id:"titan_edge",name:"Titan Edge",rank:"B",attack:48,price:760},
+{id:"voidfang",name:"Voidfang",rank:"A",attack:66,price:1250}
+];
+
+const ARMOR=[
+{id:"cloth",name:"Cloth Armor",rank:"D",defense:2,hp:10,price:30},
+{id:"leather",name:"Leather Armor",rank:"D",defense:5,hp:22,price:80},
+{id:"iron",name:"Iron Armor",rank:"C",defense:9,hp:38,price:175},
+{id:"knight",name:"Knight Armor",rank:"C",defense:14,hp:58,price:300},
+{id:"guardian",name:"Guardian Plate",rank:"B",defense:21,hp:90,price:540}
+];
+
+const PETS=[
+{id:"forest_wolf",name:"Forest Wolf",rank:"D",species:"wolf",element:"nature",power:6,maxHp:55,moves:["Tackle","Fang"],passive:"Quick Bite"},
+{id:"frost_wolf",name:"Frost Wolf",rank:"C",species:"wolf",element:"ice",power:10,maxHp:70,moves:["Tackle","Ice Fang"],passive:"Freeze Chance"},
+{id:"thunder_wolf",name:"Thunder Wolf",rank:"B",species:"wolf",element:"thunder",power:15,maxHp:82,moves:["Fang","Thunder Rush"],passive:"Shock"},
+{id:"ember_drake",name:"Ember Drake",rank:"C",species:"dragon",element:"fire",power:12,maxHp:78,moves:["Claw","Flame Breath"],passive:"Burn"},
+{id:"ice_dragon",name:"Ice Dragon",rank:"A",species:"dragon",element:"ice",power:22,maxHp:105,moves:["Ice Fang","Blizzard Wing"],passive:"Freeze"},
+{id:"storm_dragon",name:"Storm Dragon",rank:"S",species:"dragon",element:"thunder",power:32,maxHp:128,moves:["Thunder Rush","Storm Burst"],passive:"Stun"},
+{id:"void_dragon",name:"Void Dragon",rank:"SS",species:"dragon",element:"void",power:45,maxHp:150,moves:["Void Bite","Void Strike"],passive:"Life Drain"},
+{id:"celestial_dragon",name:"Celestial Dragon",rank:"SSS",species:"dragon",element:"celestial",power:60,maxHp:175,moves:["Star Fang","Celestial Nova"],passive:"Heal Aura"},
+{id:"abyss_wolf",name:"Abyss Wolf",rank:"X",species:"wolf",element:"void",power:80,maxHp:195,moves:["Void Fang","Abyss Howl"],passive:"Execute"}
+];
+
+const EGG_TYPES={
+common:{id:"common",name:"Wild Egg",className:"eggCommon",price:90,currency:"coins",drops:[
+["forest_wolf",60],["frost_wolf",25],["ember_drake",15]
+]},
+ice:{id:"ice",name:"Blue Ice Egg",className:"eggIce",price:220,currency:"coins",drops:[
+["frost_wolf",58],["ice_dragon",35],["storm_dragon",7]
+]},
+storm:{id:"storm",name:"Storm Egg",className:"eggStorm",price:320,currency:"coins",drops:[
+["thunder_wolf",55],["storm_dragon",38],["celestial_dragon",7]
+]},
+void:{id:"void",name:"Black Void Egg",className:"eggVoid",price:5,currency:"event",drops:[
+["void_dragon",72],["celestial_dragon",23],["abyss_wolf",5]
+]},
+dragon:{id:"dragon",name:"Dragon Egg",className:"eggDragon",price:500,currency:"coins",drops:[
+["ember_drake",55],["ice_dragon",30],["storm_dragon",12],["void_dragon",3]
+]},
+event:{id:"event",name:"Event Egg",className:"eggEvent",price:8,currency:"event",drops:[
+["storm_dragon",45],["void_dragon",35],["celestial_dragon",17],["abyss_wolf",3]
+]}
+};
+
+const MONSTERS=[
+{name:"Crawler",kind:"crawler",hp:38,attack:6,defense:1,coins:11,xp:14},
+{name:"Forest Brute",kind:"brute",hp:55,attack:8,defense:2,coins:15,xp:19},
+{name:"Horn Beast",kind:"horn",hp:70,attack:10,defense:3,coins:19,xp:24},
+{name:"Stone Fiend",kind:"stone",hp:90,attack:13,defense:5,coins:24,xp:30},
+{name:"Night Stalker",kind:"stalker",hp:105,attack:16,defense:6,coins:29,xp:36}
+];
+
+const BOSSES=[
+{wave:10,name:"Goblin Warlord",kind:"boss1"},
+{wave:20,name:"Dire Beast",kind:"boss2"},
+{wave:30,name:"Stone King",kind:"boss3"},
+{wave:40,name:"Shadow Knight",kind:"boss4"},
+{wave:50,name:"Earth Hydra",kind:"hydra"},
+{wave:60,name:"Storm Griffin",kind:"griffin"},
+{wave:70,name:"Dread Titan",kind:"titan"},
+{wave:80,name:"Ancient Dragon",kind:"dragonboss"},
+{wave:90,name:"Void Colossus",kind:"voidboss"},
+{wave:100,name:"Earth Titan",kind:"earthTitan"}
+];
+
+const HERO_MOVES=[
+{name:"Hunter Slash",cost:25,mult:1.6,desc:"A fast hunting strike. 1.6x damage."},
+{name:"Guard Break",cost:40,mult:1.25,desc:"1.25x damage and lowers enemy defense.",effect:"break"},
+{name:"Void Strike",cost:65,mult:2.7,desc:"A powerful charged void slash. 2.7x damage."},
+{name:"Realm Burst",cost:100,mult:4.0,desc:"Ultimate move. 4x damage.",effect:"burst"}
+];
+
+const PET_MOVE_DATA={
+"Tackle":{cost:20,mult:1.2,desc:"A quick body attack."},
+"Fang":{cost:30,mult:1.6,desc:"A strong biting attack."},
+"Ice Fang":{cost:35,mult:1.65,desc:"Ice bite with freeze chance.",effect:"freeze"},
+"Thunder Rush":{cost:40,mult:1.8,desc:"Fast lightning rush with stun chance.",effect:"stun"},
+"Claw":{cost:25,mult:1.35,desc:"Dragon claw attack."},
+"Flame Breath":{cost:45,mult:1.9,desc:"Fire breath that can burn.",effect:"burn"},
+"Blizzard Wing":{cost:65,mult:2.6,desc:"Icy wing blast with high freeze chance.",effect:"freezeStrong"},
+"Storm Burst":{cost:70,mult:2.8,desc:"Explosive thunder attack.",effect:"stunStrong"},
+"Void Bite":{cost:45,mult:2.0,desc:"Void bite that drains life.",effect:"drain"},
+"Void Strike":{cost:80,mult:3.2,desc:"Massive void attack.",effect:"void"},
+"Star Fang":{cost:50,mult:2.1,desc:"Celestial fang attack."},
+"Celestial Nova":{cost:90,mult:3.5,desc:"Celestial explosion that heals the hero.",effect:"heal"},
+"Void Fang":{cost:55,mult:2.4,desc:"Abyss-powered fang."},
+"Abyss Howl":{cost:100,mult:4.4,desc:"X-rank ultimate howl.",effect:"execute"}
+};
+
+function fresh(){
+return{
+world:"Earth",wave:1,level:1,xp:0,xpNeed:50,coins:120,eventCoins:0,
+baseHp:120,hp:120,baseAttack:11,baseDefense:1,potions:3,
+weapons:["wood_sword"],armor:[],pets:[],
+eqWeapon:"wood_sword",eqArmor:null,eqPet:null,
+eggs:{common:1,ice:0,storm:0,void:0,dragon:0,event:0},
+heroCharge:0,petCharge:0,
+enemiesTotal:0,enemiesLeft:0,currentEnemy:null,currentEnemyHp:0,currentEnemyDefense:0,
+enemyFrozen:false,enemyStunned:false,enemyBurn:0,
+battleOver:false,betweenEnemies:false,
+heroAttackAnim:0,petAttackAnim:0,enemyHitAnim:0,enemyAttackAnim:0,shake:0,
+hatchFlash:0
+};
+}
+let state=load()||fresh();
+let invTab="weapons";
+let shopTab="gear";
+
+function save(){localStorage.setItem("realmRiserUltimateV1",JSON.stringify(state))}
+function load(){try{const x=localStorage.getItem("realmRiserUltimateV1");return x?JSON.parse(x):null}catch(e){return null}}
+function rankIndex(r){return RANKS.indexOf(r)}
+function weapon(){return WEAPONS.find(x=>x.id===state.eqWeapon)}
+function armor(){return ARMOR.find(x=>x.id===state.eqArmor)}
+function pet(){return PETS.find(x=>x.id===state.eqPet)}
+function maxHp(){return state.baseHp+(armor()?.hp||0)}
+function heroAttack(){return state.baseAttack+(weapon()?.attack||0)}
+function heroDefense(){return state.baseDefense+(armor()?.defense||0)}
+function setStatus(t){document.getElementById("statusLine").textContent=t}
+function toast(t){const el=document.getElementById("toast");el.textContent=t;el.classList.remove("hidden");setTimeout(()=>el.classList.add("hidden"),1500)}
+function waveEnemyCount(){return state.wave%10===0?1:3+Math.min(3,Math.floor(state.wave/8))}
+
+function startWave(){
+state.enemiesTotal=waveEnemyCount();
+state.enemiesLeft=state.enemiesTotal;
+state.battleOver=false;state.betweenEnemies=false;
+spawnEnemy();setStatus(state.wave%10===0?`Boss Wave ${state.wave}!`:`Wave ${state.wave} begins.`);
+save();
+}
+function spawnEnemy(){
+const bossInfo=BOSSES.find(b=>b.wave===state.wave);
+const scale=1+(state.wave-1)*0.095;
+if(bossInfo){
+state.currentEnemy={
+name:bossInfo.name,kind:bossInfo.kind,boss:true,
+maxHp:Math.round((200+state.wave*18)*scale),
+attack:Math.round((15+state.wave*1.45)*(1+state.wave*.015)),
+defense:Math.round(5+state.wave*.35),
+coins:Math.round(100+state.wave*13),xp:Math.round(100+state.wave*10)
+};
+}else{
+const t=MONSTERS[Math.min(MONSTERS.length-1,Math.floor((state.wave-1)/4))];
+state.currentEnemy={
+name:t.name,kind:t.kind,boss:false,maxHp:Math.round(t.hp*scale),
+attack:Math.round(t.attack*(1+state.wave*.05)),
+defense:Math.round(t.defense+state.wave*.14),
+coins:Math.round(t.coins*(1+state.wave*.05)),
+xp:Math.round(t.xp*(1+state.wave*.04))
+};
+}
+state.currentEnemyHp=state.currentEnemy.maxHp;
+state.currentEnemyDefense=state.currentEnemy.defense;
+state.enemyFrozen=false;state.enemyStunned=false;state.enemyBurn=0;
+updateUI();
+}
+
+function gainXp(xp){
+state.xp+=xp;
+while(state.xp>=state.xpNeed){
+state.xp-=state.xpNeed;state.level++;state.xpNeed=Math.round(state.xpNeed*1.22);
+state.baseHp+=13;state.baseAttack+=3;state.baseDefense+=1;state.hp=maxHp();
+toast(`LEVEL UP! Level ${state.level}`);
+}
+}
+
+function basicAttack(){
+if(blocked())return;
+let dmg=Math.max(1,heroAttack()-state.currentEnemyDefense+Math.floor(Math.random()*5));
+if(Math.random()<.12)dmg=Math.round(dmg*1.7);
+state.heroCharge=Math.min(100,state.heroCharge+18);
+state.petCharge=Math.min(100,state.petCharge+(pet()?10:0));
+state.heroAttackAnim=13;state.enemyHitAnim=8;
+damageEnemy(dmg,`Basic attack dealt ${dmg} damage.`);
+if(state.currentEnemyHp>0)setTimeout(()=>petAutoAttack(),220);
+}
+
+function useHeroMove(move){
+if(blocked()||state.heroCharge<move.cost)return;
+state.heroCharge-=move.cost;
+let dmg=Math.max(1,Math.round((heroAttack()-state.currentEnemyDefense*.45)*move.mult));
+if(move.effect==="break")state.currentEnemyDefense=Math.max(0,state.currentEnemyDefense-4);
+state.heroAttackAnim=18;state.enemyHitAnim=10;state.shake=move.cost>=65?8:3;
+damageEnemy(dmg,`${move.name} dealt ${dmg} damage!`);
+closeOverlay("heroMovesOverlay");
+if(state.currentEnemyHp>0)setTimeout(()=>petAutoAttack(),260);
+}
+
+function petAutoAttack(){
+const p=pet();
+if(!p||blocked()||state.currentEnemyHp<=0){if(state.currentEnemyHp>0)setTimeout(enemyTurn,250);return}
+let dmg=Math.max(1,p.power+Math.floor(Math.random()*4)-Math.round(state.currentEnemyDefense*.22));
+state.petAttackAnim=16;state.enemyHitAnim=6;state.petCharge=Math.min(100,state.petCharge+18);
+damageEnemy(dmg,`${p.name} attacks for ${dmg} damage.`);
+if(state.currentEnemyHp>0)setTimeout(enemyTurn,250);
+}
+
+function usePetMove(name){
+const p=pet();if(!p||blocked())return;
+const mv=PET_MOVE_DATA[name];if(!mv||state.petCharge<mv.cost)return;
+state.petCharge-=mv.cost;
+let dmg=Math.max(1,Math.round((p.power+4)*mv.mult-state.currentEnemyDefense*.18));
+state.petAttackAnim=22;state.enemyHitAnim=12;state.shake=mv.cost>=65?8:4;
+if(mv.effect==="freeze"&&Math.random()<.45)state.enemyFrozen=true;
+if(mv.effect==="freezeStrong"&&Math.random()<.75)state.enemyFrozen=true;
+if(mv.effect==="stun"&&Math.random()<.45)state.enemyStunned=true;
+if(mv.effect==="stunStrong"&&Math.random()<.7)state.enemyStunned=true;
+if(mv.effect==="burn")state.enemyBurn=3;
+if(mv.effect==="drain")state.hp=Math.min(maxHp(),state.hp+Math.round(dmg*.25));
+if(mv.effect==="heal")state.hp=Math.min(maxHp(),state.hp+Math.round(maxHp()*.15));
+if(mv.effect==="execute"&&state.currentEnemyHp/state.currentEnemy.maxHp<.25)dmg=Math.round(dmg*2);
+damageEnemy(dmg,`${p.name} used ${name} for ${dmg} damage!`);
+closeOverlay("petMovesOverlay");
+if(state.currentEnemyHp>0)setTimeout(enemyTurn,280);
+}
+
+function damageEnemy(dmg,msg){
+state.currentEnemyHp=Math.max(0,state.currentEnemyHp-dmg);setStatus(msg);
+if(state.currentEnemyHp<=0)defeatEnemy();updateUI();
+}
+
+function enemyTurn(){
+if(blocked()||state.currentEnemyHp<=0)return;
+if(state.enemyBurn>0){
+const burn=Math.max(3,Math.round(state.currentEnemy.maxHp*.035));
+state.currentEnemyHp=Math.max(0,state.currentEnemyHp-burn);state.enemyBurn--;
+setStatus(`${state.currentEnemy.name} takes ${burn} burn damage.`);
+if(state.currentEnemyHp<=0){defeatEnemy();return}
+}
+if(state.enemyFrozen){state.enemyFrozen=false;setStatus(`${state.currentEnemy.name} is frozen and misses its turn.`);updateUI();return}
+if(state.enemyStunned){state.enemyStunned=false;setStatus(`${state.currentEnemy.name} is stunned and misses its turn.`);updateUI();return}
+const dmg=Math.max(1,state.currentEnemy.attack-heroDefense()+Math.floor(Math.random()*4));
+state.hp=Math.max(0,state.hp-dmg);state.enemyAttackAnim=12;state.shake=6;
+setStatus(`${state.currentEnemy.name} hits you for ${dmg}.`);
+if(state.hp<=0){
+const lost=Math.floor(state.coins*.1);state.coins-=lost;state.hp=maxHp();state.heroCharge=0;state.petCharge=0;
+setStatus(`You were defeated. Lost ${lost} coins. Restarting wave...`);
+setTimeout(startWave,800);
+}
+updateUI();save();
+}
+
+function defeatEnemy(){
+const e=state.currentEnemy;state.coins+=e.coins;gainXp(e.xp);
+if(e.boss&&Math.random()<.55){state.eventCoins+=state.wave===100?4:1;toast("Boss dropped Event Coin!")}
+if(e.boss&&Math.random()<.35){const type=state.wave>=80?"void":state.wave>=40?"dragon":"ice";state.eggs[type]=(state.eggs[type]||0)+1;toast(`${EGG_TYPES[type].name} dropped!`)}
+state.enemiesLeft--;
+if(state.enemiesLeft<=0){
+state.battleOver=true;const bonus=25+state.wave*5;state.coins+=bonus;
+setStatus(`Wave ${state.wave} cleared! +${bonus} bonus coins.`);
+if(state.wave===100){toast("EARTH COMPLETE! Mushroom Planet coming next.");save();updateUI();return}
+state.wave++;state.hp=Math.min(maxHp(),state.hp+Math.round(maxHp()*.2));state.heroCharge=Math.min(100,state.heroCharge+15);state.petCharge=Math.min(100,state.petCharge+15);save();setTimeout(startWave,1000);
+}else{
+state.betweenEnemies=true;setStatus(`Enemy defeated. ${state.enemiesLeft} left.`);
+save();setTimeout(()=>{state.betweenEnemies=false;spawnEnemy()},650);
+}
+updateUI();
+}
+
+function usePotion(){
+if(state.potions<=0||state.hp>=maxHp())return;
+const heal=Math.round(maxHp()*.42);const before=state.hp;state.hp=Math.min(maxHp(),state.hp+heal);state.potions--;
+setStatus(`Potion restored ${state.hp-before} HP.`);updateUI();save();
+}
+function blocked(){return state.battleOver||state.betweenEnemies||!state.currentEnemy}
+
+function buyGear(item){
+if(state.coins<item.price){toast("Not enough coins");return}
+const owned=state.weapons.includes(item.id)||state.armor.includes(item.id);
+if(owned)return;
+state.coins-=item.price;
+if(WEAPONS.includes(item))state.weapons.push(item.id);else state.armor.push(item.id);
+toast(`Bought ${item.name}`);updateUI();renderShop();
+}
+function buyEgg(type){
+const e=EGG_TYPES[type];
+if(e.currency==="coins"){
+if(state.coins<e.price){toast("Not enough coins");return}
+state.coins-=e.price;
+}else{
+if(state.eventCoins<e.price){toast("Not enough Event Coins");return}
+state.eventCoins-=e.price;
+}
+state.eggs[type]=(state.eggs[type]||0)+1;toast(`Bought ${e.name}`);updateUI();renderShop();
+}
+function hatchEgg(type){
+if((state.eggs[type]||0)<=0){toast("You do not have that egg");return}
+state.eggs[type]--;const drops=EGG_TYPES[type].drops;
+let roll=Math.random()*100,acc=0,pick=drops[0][0];
+for(const [id,chance] of drops){acc+=chance;if(roll<=acc){pick=id;break}}
+const p=PETS.find(x=>x.id===pick);
+if(!state.pets.includes(p.id))state.pets.push(p.id);
+state.hatchFlash=40;toast(`HATCHED: ${p.rank}-Rank ${p.name}!`);
+setStatus(`You hatched ${p.name}! Open Inventory → Pets to equip it.`);
+updateUI();renderShop();save();
+}
+
+function equip(type,id){
+if(type==="weapons")state.eqWeapon=id;
+if(type==="armor"){
+const before=maxHp();state.eqArmor=id;const after=maxHp();state.hp=Math.min(after,state.hp+Math.max(0,after-before));
+}
+if(type==="pets"){state.eqPet=id;state.petCharge=0}
+updateUI();renderInventory();save();
+}
+
+function openOverlay(id){document.getElementById(id).classList.remove("hidden")}
+function closeOverlay(id){document.getElementById(id).classList.add("hidden")}
+
+function renderInventory(){
+const grid=document.getElementById("inventoryGrid");grid.innerHTML="";
+let catalog,owned,eq;
+if(invTab==="weapons"){catalog=WEAPONS;owned=state.weapons;eq=state.eqWeapon}
+else if(invTab==="armor"){catalog=ARMOR;owned=state.armor;eq=state.eqArmor}
+else{catalog=PETS;owned=state.pets;eq=state.eqPet}
+if(owned.length===0){grid.innerHTML='<div class="card"><div class="desc">Nothing here yet.</div></div>';return}
+owned.map(id=>catalog.find(x=>x.id===id)).filter(Boolean).sort((a,b)=>rankIndex(b.rank)-rankIndex(a.rank)).forEach(item=>{
+const card=document.createElement("div");card.className="card"+(eq===item.id?" equipped":"");
+let desc="";
+if(invTab==="weapons")desc=`+${item.attack} Attack`;
+else if(invTab==="armor")desc=`+${item.defense} Defense · +${item.hp} HP`;
+else desc=`${item.species.toUpperCase()} · ${item.element} · Power ${item.power}<br>Moves: ${item.moves.join(", ")}<br>Passive: ${item.passive}`;
+card.innerHTML=`<div class="cardTop"><div class="cardTitle">${item.name}</div><span class="rank rarity${item.rank}">${item.rank}</span></div><div class="desc">${desc}</div><button ${eq===item.id?"disabled":""}>${eq===item.id?"Equipped":"Equip"}</button>`;
+card.querySelector("button").onclick=()=>equip(invTab,item.id);grid.appendChild(card);
+});
+}
+
+function renderShop(){
+const box=document.getElementById("shopContent");box.innerHTML="";
+if(shopTab==="gear"){
+const grid=document.createElement("div");grid.className="grid";
+[...WEAPONS,...ARMOR].filter(i=>rankIndex(i.rank)<=Math.min(3,Math.floor(state.wave/25))).forEach(item=>{
+const owned=state.weapons.includes(item.id)||state.armor.includes(item.id);
+const card=document.createElement("div");card.className="card shopCard";
+const d=WEAPONS.includes(item)?`+${item.attack} Attack`:`+${item.defense} Defense · +${item.hp} HP`;
+card.innerHTML=`<div class="cardTop"><div class="cardTitle">${item.name}</div><span class="rank rarity${item.rank}">${item.rank}</span></div><div class="desc">${d}</div><button ${owned?"disabled":""}>${owned?"Owned":`Buy · ${item.price} coins`}</button>`;
+card.querySelector("button").onclick=()=>buyGear(item);grid.appendChild(card);
+});
+const pot=document.createElement("div");pot.className="card shopCard";pot.innerHTML=`<div class="cardTitle">Health Potion</div><div class="desc">Restores 42% max HP.</div><button>Buy · 40 coins</button>`;
+pot.querySelector("button").onclick=()=>{if(state.coins<40){toast("Not enough coins");return}state.coins-=40;state.potions++;toast("Potion bought");updateUI();renderShop()};grid.appendChild(pot);
+box.appendChild(grid);
+}
+if(shopTab==="eggs"){
+const grid=document.createElement("div");grid.className="eggGrid";
+Object.values(EGG_TYPES).forEach(e=>{
+const d=document.createElement("div");d.className="egg";
+d.innerHTML=`<div class="eggArt"><div class="eggShape ${e.className}"></div></div><div class="cardTitle">${e.name}</div><div class="desc">${e.currency==="coins"?e.price+" coins":e.price+" Event Coins"}<br>Possible pets: ${e.drops.map(x=>PETS.find(p=>p.id===x[0]).name).join(", ")}</div><button>Buy Egg</button>`;
+d.querySelector("button").onclick=()=>buyEgg(e.id);grid.appendChild(d);
+});
+box.appendChild(grid);
+}
+if(shopTab==="hatch"){
+const grid=document.createElement("div");grid.className="eggGrid";
+Object.values(EGG_TYPES).forEach(e=>{
+const count=state.eggs[e.id]||0;
+const d=document.createElement("div");d.className="egg";
+d.innerHTML=`<div class="eggArt"><div class="eggShape ${e.className}"></div></div><div class="cardTitle">${e.name}</div><div class="desc">Owned: ${count}</div><button ${count<=0?"disabled":""}>HATCH</button>`;
+d.querySelector("button").onclick=()=>hatchEgg(e.id);grid.appendChild(d);
+});
+box.appendChild(grid);
+}
+}
+
+function renderHeroMoves(){
+const grid=document.getElementById("heroMoveGrid");grid.innerHTML="";
+HERO_MOVES.forEach(m=>{
+const b=document.createElement("button");b.className="moveBtn"+(state.heroCharge<m.cost?" locked":"");
+b.disabled=state.heroCharge<m.cost||blocked();
+b.innerHTML=`<strong>${m.name} · ${m.cost} Charge</strong><span>${m.desc}</span>`;
+b.onclick=()=>useHeroMove(m);grid.appendChild(b);
+});
+}
+
+function renderPetMoves(){
+const grid=document.getElementById("petMoveGrid");grid.innerHTML="";const p=pet();
+if(!p){grid.innerHTML='<div class="card"><div class="desc">No pet equipped. Hatch an egg and equip a pet first.</div></div>';return}
+p.moves.forEach(name=>{
+const m=PET_MOVE_DATA[name];const b=document.createElement("button");b.className="moveBtn"+(state.petCharge<m.cost?" locked":"");
+b.disabled=state.petCharge<m.cost||blocked();
+b.innerHTML=`<strong>${name} · ${m.cost} Charge</strong><span>${m.desc}</span>`;
+b.onclick=()=>usePetMove(name);grid.appendChild(b);
+});
+}
+
+function updateUI(){
+document.getElementById("worldLabel").textContent=`${state.world} · Wave ${state.wave}`;
+document.getElementById("levelText").textContent=state.level;
+document.getElementById("coinText").textContent=state.coins;
+document.getElementById("eventCoinText").textContent=state.eventCoins;
+document.getElementById("eggCountText").textContent=Object.values(state.eggs).reduce((a,b)=>a+b,0);
+document.getElementById("petTopText").textContent=pet()?.name||"None";
+document.getElementById("heroHpText").textContent=`${state.hp} / ${maxHp()}`;
+document.getElementById("heroHpFill").style.width=`${Math.max(0,state.hp/maxHp()*100)}%`;
+document.getElementById("xpText").textContent=`${state.xp} / ${state.xpNeed}`;
+document.getElementById("xpFill").style.width=`${Math.min(100,state.xp/state.xpNeed*100)}%`;
+document.getElementById("chargeText").textContent=`${state.heroCharge} / 100`;
+document.getElementById("chargeFill").style.width=`${state.heroCharge}%`;
+document.getElementById("petChargeText").textContent=`${state.petCharge} / 100`;
+document.getElementById("petChargeFill").style.width=`${state.petCharge}%`;
+if(state.currentEnemy){
+document.getElementById("enemyNameText").textContent=state.currentEnemy.name;
+document.getElementById("enemyHpText").textContent=`${state.currentEnemyHp} / ${state.currentEnemy.maxHp}`;
+document.getElementById("enemyHpFill").style.width=`${Math.max(0,state.currentEnemyHp/state.currentEnemy.maxHp*100)}%`;
+}
+document.getElementById("waveProgressText").textContent=`${state.enemiesLeft} left`;
+document.getElementById("attackBtn").disabled=blocked();
+document.getElementById("movesBtn").disabled=blocked();
+document.getElementById("petMovesBtn").disabled=blocked()||!pet();
+save();
+}
+
+function drawBackground(){
+const w=canvas.width,h=canvas.height;
+const g=ctx.createLinearGradient(0,0,0,h);g.addColorStop(0,"#243a58");g.addColorStop(.58,"#16263a");g.addColorStop(1,"#101722");ctx.fillStyle=g;ctx.fillRect(0,0,w,h);
+ctx.fillStyle="rgba(220,235,255,.14)";ctx.beginPath();ctx.arc(970,90,55,0,Math.PI*2);ctx.fill();
+ctx.fillStyle="#172238";ctx.beginPath();ctx.moveTo(0,360);ctx.lineTo(130,210);ctx.lineTo(260,360);ctx.lineTo(440,170);ctx.lineTo(620,360);ctx.lineTo(800,220);ctx.lineTo(960,360);ctx.lineTo(1180,190);ctx.lineTo(1180,590);ctx.lineTo(0,590);ctx.closePath();ctx.fill();
+ctx.fillStyle="#273220";ctx.fillRect(0,405,w,185);
+ctx.fillStyle="#4a4334";ctx.beginPath();ctx.moveTo(0,485);ctx.lineTo(w,430);ctx.lineTo(w,590);ctx.lineTo(0,590);ctx.closePath();ctx.fill();
+}
+
+function drawHero(x,y){
+ctx.save();
+let off=state.heroAttackAnim>0?Math.sin((18-state.heroAttackAnim)/18*Math.PI)*34:0;
+x+=off;
+
+// ground shadow
+ctx.fillStyle="rgba(0,0,0,.36)";
+ctx.beginPath();ctx.ellipse(x,y+80,44,12,0,0,Math.PI*2);ctx.fill();
+
+// cape
+let cg=ctx.createLinearGradient(x-35,y-20,x+15,y+65);
+cg.addColorStop(0,"#243b6a");cg.addColorStop(1,"#11182a");
+ctx.fillStyle=cg;
+ctx.beginPath();ctx.moveTo(x-20,y-12);ctx.lineTo(x-40,y+62);ctx.lineTo(x+8,y+50);ctx.lineTo(x+17,y-4);ctx.closePath();ctx.fill();
+
+// legs
+ctx.strokeStyle="#263247";ctx.lineWidth=12;ctx.lineCap="round";
+ctx.beginPath();ctx.moveTo(x-11,y+37);ctx.lineTo(x-17,y+69);ctx.stroke();
+ctx.beginPath();ctx.moveTo(x+11,y+37);ctx.lineTo(x+18,y+69);ctx.stroke();
+
+// boots
+ctx.strokeStyle="#111720";ctx.lineWidth=10;
+ctx.beginPath();ctx.moveTo(x-18,y+69);ctx.lineTo(x-31,y+71);ctx.stroke();
+ctx.beginPath();ctx.moveTo(x+18,y+69);ctx.lineTo(x+31,y+71);ctx.stroke();
+
+// torso armor with shading
+let ag=ctx.createLinearGradient(x-28,y-20,x+28,y+45);
+ag.addColorStop(0,"#8fa4ba");
+ag.addColorStop(.45,"#566c84");
+ag.addColorStop(1,"#314257");
+ctx.fillStyle=ag;
+ctx.beginPath();ctx.roundRect(x-26,y-22,52,68,12);ctx.fill();
+ctx.strokeStyle="#aebed0";ctx.lineWidth=2;ctx.stroke();
+
+// armor center plate
+ctx.fillStyle="rgba(255,255,255,.13)";
+ctx.beginPath();ctx.moveTo(x-4,y-17);ctx.lineTo(x+14,y-10);ctx.lineTo(x+10,y+28);ctx.lineTo(x-8,y+31);ctx.closePath();ctx.fill();
+
+// belt
+ctx.fillStyle="#2a2119";ctx.fillRect(x-26,y+18,52,9);
+ctx.fillStyle="#d2aa50";ctx.fillRect(x-5,y+17,10,11);
+
+// neck
+ctx.fillStyle="#c98e68";ctx.fillRect(x-6,y-30,12,11);
+
+// head skin gradient
+let sg=ctx.createRadialGradient(x-7,y-49,4,x,y-47,23);
+sg.addColorStop(0,"#f0c7a5");sg.addColorStop(1,"#b97e5f");
+ctx.fillStyle=sg;
+ctx.beginPath();ctx.arc(x,y-49,21,0,Math.PI*2);ctx.fill();
+
+// hair
+ctx.fillStyle="#261b18";
+ctx.beginPath();ctx.arc(x,y-55,21,Math.PI,Math.PI*2);ctx.fill();
+ctx.beginPath();ctx.moveTo(x-19,y-54);ctx.quadraticCurveTo(x-24,y-36,x-12,y-31);ctx.lineTo(x-9,y-52);ctx.closePath();ctx.fill();
+
+// face
+ctx.fillStyle="#1a1513";
+ctx.beginPath();ctx.arc(x-7,y-49,1.8,0,Math.PI*2);ctx.fill();
+ctx.beginPath();ctx.arc(x+7,y-49,1.8,0,Math.PI*2);ctx.fill();
+ctx.strokeStyle="rgba(90,45,35,.75)";ctx.lineWidth=1.2;
+ctx.beginPath();ctx.moveTo(x-5,y-38);ctx.quadraticCurveTo(x,y-35,x+6,y-39);ctx.stroke();
+
+// shoulder
+ctx.fillStyle="#667d96";
+ctx.beginPath();ctx.ellipse(x+23,y-8,12,10,0,0,Math.PI*2);ctx.fill();
+
+// arm
+ctx.strokeStyle="#586f88";ctx.lineWidth=11;
+ctx.beginPath();ctx.moveTo(x+20,y-2);ctx.lineTo(x+43,y+7);ctx.stroke();
+
+// glove
+ctx.fillStyle="#2b3441";ctx.beginPath();ctx.arc(x+44,y+7,6,0,Math.PI*2);ctx.fill();
+
+// sword
+let swordG=ctx.createLinearGradient(x+45,y+8,x+96,y-42);
+swordG.addColorStop(0,"#9aa9ba");swordG.addColorStop(.45,"#f3f7ff");swordG.addColorStop(1,"#9fb3c8");
+ctx.strokeStyle=swordG;ctx.lineWidth=7;
+ctx.beginPath();ctx.moveTo(x+48,y+5);ctx.lineTo(x+94,y-39);ctx.stroke();
+ctx.strokeStyle="rgba(255,255,255,.75)";ctx.lineWidth=1.5;
+ctx.beginPath();ctx.moveTo(x+52,y+1);ctx.lineTo(x+94,y-39);ctx.stroke();
+
+// guard + handle
+ctx.strokeStyle="#c69d47";ctx.lineWidth=5;
+ctx.beginPath();ctx.moveTo(x+42,y);ctx.lineTo(x+57,y+14);ctx.stroke();
+ctx.strokeStyle="#3b251a";ctx.lineWidth=6;
+ctx.beginPath();ctx.moveTo(x+44,y+8);ctx.lineTo(x+36,y+16);ctx.stroke();
+
+ctx.restore();
+}
+
+function wolfPalette(element){
+if(element==="ice")return["#d3e9f6","#7994a9","#f8fdff","#8bdcff"];
+if(element==="thunder")return["#c9b761","#6b5d2d","#fff1a3","#ffe45f"];
+if(element==="void")return["#322a3d","#15101c","#a783d6","#8a4fff"];
+return["#7a6b58","#4b4035","#d5c8b7","#8fcf87"];
+}
+function drawWolf(x,y,scale,element){
+ctx.save();ctx.translate(x,y);ctx.scale(scale,scale);
+const c=wolfPalette(element);
+
+// shadow
+ctx.fillStyle="rgba(0,0,0,.32)";
+ctx.beginPath();ctx.ellipse(0,57,60,11,0,0,Math.PI*2);ctx.fill();
+
+// body
+let bg=ctx.createLinearGradient(-35,-5,35,45);
+bg.addColorStop(0,c[0]);bg.addColorStop(1,c[1]);
+ctx.fillStyle=bg;
+ctx.beginPath();
+ctx.moveTo(-44,18);
+ctx.quadraticCurveTo(-35,-8,-5,-10);
+ctx.quadraticCurveTo(24,-12,43,5);
+ctx.quadraticCurveTo(56,20,37,39);
+ctx.quadraticCurveTo(9,49,-24,41);
+ctx.quadraticCurveTo(-47,37,-44,18);
+ctx.fill();
+
+// chest fur
+ctx.fillStyle=c[2];
+ctx.beginPath();ctx.moveTo(18,5);ctx.lineTo(30,17);ctx.lineTo(20,18);ctx.lineTo(29,29);ctx.lineTo(11,25);ctx.closePath();ctx.fill();
+
+// neck
+ctx.fillStyle=c[0];
+ctx.beginPath();ctx.ellipse(33,0,22,25,-.25,0,Math.PI*2);ctx.fill();
+
+// head / muzzle
+ctx.fillStyle=c[0];
+ctx.beginPath();ctx.ellipse(48,-18,27,23,-.15,0,Math.PI*2);ctx.fill();
+ctx.fillStyle=c[2];
+ctx.beginPath();ctx.ellipse(63,-8,18,10,0,0,Math.PI*2);ctx.fill();
+
+// ears
+ctx.fillStyle=c[1];
+ctx.beginPath();ctx.moveTo(32,-31);ctx.lineTo(26,-58);ctx.lineTo(44,-37);ctx.closePath();ctx.fill();
+ctx.beginPath();ctx.moveTo(50,-34);ctx.lineTo(59,-59);ctx.lineTo(61,-31);ctx.closePath();ctx.fill();
+ctx.fillStyle="#b88686";
+ctx.beginPath();ctx.moveTo(32,-37);ctx.lineTo(29,-52);ctx.lineTo(40,-40);ctx.closePath();ctx.fill();
+ctx.beginPath();ctx.moveTo(51,-39);ctx.lineTo(57,-53);ctx.lineTo(58,-36);ctx.closePath();ctx.fill();
+
+// eye
+ctx.fillStyle=c[3];ctx.beginPath();ctx.arc(53,-21,4,0,Math.PI*2);ctx.fill();
+ctx.fillStyle="#0d1116";ctx.beginPath();ctx.arc(54,-21,1.8,0,Math.PI*2);ctx.fill();
+ctx.fillStyle="rgba(255,255,255,.8)";ctx.beginPath();ctx.arc(55,-22,0.8,0,Math.PI*2);ctx.fill();
+
+// nose
+ctx.fillStyle="#101216";ctx.beginPath();ctx.ellipse(78,-7,6,4,0,0,Math.PI*2);ctx.fill();
+
+// mouth and fang
+ctx.strokeStyle="#2a2020";ctx.lineWidth=1.5;
+ctx.beginPath();ctx.moveTo(66,-2);ctx.lineTo(75,0);ctx.stroke();
+ctx.fillStyle="#f4f0e8";
+ctx.beginPath();ctx.moveTo(68,0);ctx.lineTo(71,7);ctx.lineTo(74,1);ctx.closePath();ctx.fill();
+
+// legs with paws
+ctx.strokeStyle=c[1];ctx.lineWidth=10;ctx.lineCap="round";
+for(const [lx,dx] of[[-28,-34],[-8,-11],[18,13],[34,36]]){
+ctx.beginPath();ctx.moveTo(lx,35);ctx.lineTo(dx,58);ctx.stroke();
+ctx.strokeStyle="#2c2826";ctx.lineWidth=6;
+ctx.beginPath();ctx.moveTo(dx,58);ctx.lineTo(dx+7,58);ctx.stroke();
+ctx.strokeStyle=c[1];ctx.lineWidth=10;
+}
+
+// tail
+ctx.strokeStyle=c[0];ctx.lineWidth=14;ctx.lineCap="round";
+ctx.beginPath();ctx.moveTo(-41,16);ctx.quadraticCurveTo(-75,-5,-72,-36);ctx.stroke();
+ctx.strokeStyle=c[2];ctx.lineWidth=6;
+ctx.beginPath();ctx.moveTo(-70,-25);ctx.lineTo(-72,-38);ctx.stroke();
+
+// fur strokes
+ctx.strokeStyle="rgba(255,255,255,.12)";ctx.lineWidth=1;
+for(let i=0;i<10;i++){
+let fx=-28+i*7;
+ctx.beginPath();ctx.moveTo(fx,9+(i%3)*4);ctx.lineTo(fx+7,14+(i%2)*5);ctx.stroke();
+}
+ctx.restore();
+}
+
+function dragonPalette(element){
+if(element==="ice")return["#aee8f7","#3f8da7","#e9fcff","#67dfff"];
+if(element==="thunder")return["#d7c05a","#65528c","#fff1a2","#ffe45a"];
+if(element==="void")return["#372346","#140b19","#c28cff","#8d4cff"];
+if(element==="celestial")return["#e8d6f8","#8397d9","#fff5d7","#fff2a8"];
+return["#b94f3d","#752d29","#f0b07c","#ff704c"];
+}
+function drawDragon(x,y,scale,element){
+ctx.save();ctx.translate(x,y);ctx.scale(scale,scale);
+const c=dragonPalette(element);
+
+// shadow
+ctx.fillStyle="rgba(0,0,0,.34)";
+ctx.beginPath();ctx.ellipse(0,67,65,12,0,0,Math.PI*2);ctx.fill();
+
+// tail
+ctx.strokeStyle=c[0];ctx.lineWidth=18;ctx.lineCap="round";
+ctx.beginPath();ctx.moveTo(-35,28);ctx.quadraticCurveTo(-80,33,-93,4);ctx.quadraticCurveTo(-102,-17,-80,-30);ctx.stroke();
+
+// body gradient
+let dg=ctx.createLinearGradient(-45,-15,45,48);
+dg.addColorStop(0,c[0]);dg.addColorStop(1,c[1]);
+ctx.fillStyle=dg;
+ctx.beginPath();
+ctx.ellipse(0,24,47,36,-.05,0,Math.PI*2);
+ctx.fill();
+
+// belly plates
+ctx.fillStyle=c[2];
+for(let i=0;i<5;i++){
+ctx.beginPath();
+ctx.roundRect(15+i*2,5+i*9,18,7,4);ctx.fill();
+}
+
+// wings
+ctx.fillStyle=c[1];
+ctx.beginPath();
+ctx.moveTo(-10,5);ctx.lineTo(-72,-50);ctx.lineTo(-50,-2);ctx.lineTo(-66,18);ctx.lineTo(-22,20);ctx.closePath();ctx.fill();
+ctx.beginPath();
+ctx.moveTo(12,0);ctx.lineTo(58,-55);ctx.lineTo(48,-8);ctx.lineTo(74,5);ctx.lineTo(25,22);ctx.closePath();ctx.fill();
+ctx.strokeStyle="rgba(255,255,255,.12)";ctx.lineWidth=2;
+ctx.beginPath();ctx.moveTo(-14,4);ctx.lineTo(-65,-43);ctx.stroke();
+ctx.beginPath();ctx.moveTo(16,1);ctx.lineTo(55,-48);ctx.stroke();
+
+// neck and head
+ctx.fillStyle=c[0];
+ctx.beginPath();ctx.ellipse(30,-3,22,32,-.25,0,Math.PI*2);ctx.fill();
+ctx.beginPath();ctx.ellipse(47,-27,30,22,-.2,0,Math.PI*2);ctx.fill();
+
+// muzzle
+ctx.fillStyle=c[2];
+ctx.beginPath();ctx.ellipse(67,-18,19,9,-.1,0,Math.PI*2);ctx.fill();
+
+// horns
+ctx.fillStyle="#e4d1a8";
+ctx.beginPath();ctx.moveTo(30,-44);ctx.lineTo(26,-70);ctx.lineTo(42,-46);ctx.closePath();ctx.fill();
+ctx.beginPath();ctx.moveTo(49,-46);ctx.lineTo(61,-68);ctx.lineTo(62,-39);ctx.closePath();ctx.fill();
+
+// spines
+ctx.fillStyle=c[3];
+for(let i=0;i<5;i++){
+let sx=-27+i*13;
+ctx.beginPath();ctx.moveTo(sx,-5);ctx.lineTo(sx+5,-19-(i%2)*4);ctx.lineTo(sx+11,-4);ctx.closePath();ctx.fill();
+}
+
+// eye
+ctx.fillStyle=c[3];ctx.beginPath();ctx.arc(54,-30,4,0,Math.PI*2);ctx.fill();
+ctx.fillStyle="#111";ctx.beginPath();ctx.arc(55,-30,1.7,0,Math.PI*2);ctx.fill();
+
+// nostril
+ctx.fillStyle="#241616";ctx.beginPath();ctx.arc(73,-20,1.7,0,Math.PI*2);ctx.fill();
+
+// legs / claws
+ctx.strokeStyle=c[1];ctx.lineWidth=11;ctx.lineCap="round";
+for(const [lx,dx] of[[-22,-28],[12,8],[28,30]]){
+ctx.beginPath();ctx.moveTo(lx,44);ctx.lineTo(dx,67);ctx.stroke();
+ctx.strokeStyle="#25222a";ctx.lineWidth=5;
+ctx.beginPath();ctx.moveTo(dx,67);ctx.lineTo(dx+8,67);ctx.stroke();
+ctx.strokeStyle=c[1];ctx.lineWidth=11;
+}
+
+// scale highlights
+ctx.strokeStyle="rgba(255,255,255,.16)";ctx.lineWidth=1;
+for(let i=0;i<12;i++){
+let sx=-25+(i%6)*11, sy=11+Math.floor(i/6)*12;
+ctx.beginPath();ctx.arc(sx,sy,5,Math.PI*.1,Math.PI*.9);ctx.stroke();
+}
+ctx.restore();
+}
+
+function drawPet(){
+const p=pet();if(!p)return;
+let x=320,y=445;if(state.petAttackAnim>0)x+=Math.sin((22-state.petAttackAnim)/22*Math.PI)*110;
+if(p.species==="wolf")drawWolf(x,y,0.9,p.element);else drawDragon(x,y,0.82,p.element);
+}
+
+function drawMonsterShape(kind,x,y,scale=1){
+ctx.save();ctx.translate(x,y);ctx.scale(scale,scale);
+ctx.fillStyle="rgba(0,0,0,.36)";
+ctx.beginPath();ctx.ellipse(0,72,64,13,0,0,Math.PI*2);ctx.fill();
+
+if(kind==="crawler"){
+let g=ctx.createLinearGradient(-40,-20,40,45);g.addColorStop(0,"#70805d");g.addColorStop(1,"#344431");
+ctx.fillStyle=g;ctx.beginPath();ctx.ellipse(0,22,50,34,0,0,Math.PI*2);ctx.fill();
+ctx.fillStyle="#667b5a";ctx.beginPath();ctx.ellipse(4,-11,35,27,-.1,0,Math.PI*2);ctx.fill();
+ctx.strokeStyle="#2e392c";ctx.lineWidth=8;ctx.lineCap="round";
+for(const side of[-1,1]){ctx.beginPath();ctx.moveTo(side*34,24);ctx.lineTo(side*58,52);ctx.stroke();ctx.beginPath();ctx.moveTo(side*20,36);ctx.lineTo(side*38,65);ctx.stroke()}
+ctx.fillStyle="#e8e4c7";ctx.beginPath();ctx.arc(-9,-15,5,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(14,-13,5,0,Math.PI*2);ctx.fill();
+ctx.fillStyle="#121514";ctx.beginPath();ctx.arc(-9,-15,2,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(14,-13,2,0,Math.PI*2);ctx.fill();
+ctx.strokeStyle="#2c2620";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-9,3);ctx.quadraticCurveTo(7,13,22,2);ctx.stroke();
+}
+else if(kind==="brute"||kind==="boss1"){
+let g=ctx.createLinearGradient(-50,-40,50,70);g.addColorStop(0,"#80694d");g.addColorStop(1,"#443829");
+ctx.fillStyle=g;ctx.beginPath();ctx.roundRect(-46,-4,92,76,24);ctx.fill();
+ctx.fillStyle="#92785a";ctx.beginPath();ctx.arc(0,-32,34,0,Math.PI*2);ctx.fill();
+ctx.fillStyle="#392d23";ctx.beginPath();ctx.arc(0,-40,33,Math.PI,Math.PI*2);ctx.fill();
+ctx.fillStyle="#f1e4ca";ctx.beginPath();ctx.arc(-11,-36,5,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(11,-36,5,0,Math.PI*2);ctx.fill();
+ctx.fillStyle="#15110f";ctx.beginPath();ctx.arc(-11,-36,2,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(11,-36,2,0,Math.PI*2);ctx.fill();
+ctx.strokeStyle="#3a2e23";ctx.lineWidth=12;ctx.beginPath();ctx.moveTo(-36,22);ctx.lineTo(-60,58);ctx.stroke();ctx.beginPath();ctx.moveTo(36,22);ctx.lineTo(60,58);ctx.stroke();
+ctx.fillStyle="#d8c9a7";ctx.beginPath();ctx.moveTo(-8,-16);ctx.lineTo(-2,-7);ctx.lineTo(4,-17);ctx.closePath();ctx.fill();
+}
+else if(kind==="horn"||kind==="boss2"){
+let g=ctx.createLinearGradient(-50,-40,50,65);g.addColorStop(0,"#754d42");g.addColorStop(1,"#3b2926");
+ctx.fillStyle=g;ctx.beginPath();ctx.ellipse(0,26,56,43,0,0,Math.PI*2);ctx.fill();
+ctx.fillStyle="#7e5546";ctx.beginPath();ctx.ellipse(0,-17,40,32,0,0,Math.PI*2);ctx.fill();
+ctx.fillStyle="#d5c2a0";ctx.beginPath();ctx.moveTo(-28,-39);ctx.lineTo(-56,-70);ctx.lineTo(-15,-46);ctx.closePath();ctx.fill();ctx.beginPath();ctx.moveTo(28,-39);ctx.lineTo(56,-70);ctx.lineTo(15,-46);ctx.closePath();ctx.fill();
+ctx.fillStyle="#f0e6d4";ctx.beginPath();ctx.arc(-12,-20,5,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(12,-20,5,0,Math.PI*2);ctx.fill();
+ctx.fillStyle="#111";ctx.beginPath();ctx.arc(-12,-20,2,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(12,-20,2,0,Math.PI*2);ctx.fill();
+ctx.strokeStyle="#2f211f";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-10,1);ctx.quadraticCurveTo(2,10,15,0);ctx.stroke();
+}
+else{
+const voidy=kind.includes("void");
+let g=ctx.createLinearGradient(-50,-45,55,70);g.addColorStop(0,voidy?"#514060":"#88919b");g.addColorStop(1,voidy?"#211827":"#464d55");
+ctx.fillStyle=g;ctx.beginPath();ctx.moveTo(-50,0);ctx.lineTo(-28,-45);ctx.lineTo(20,-52);ctx.lineTo(52,-15);ctx.lineTo(57,45);ctx.lineTo(20,75);ctx.lineTo(-37,69);ctx.lineTo(-58,36);ctx.closePath();ctx.fill();
+ctx.strokeStyle=voidy?"#8b5bc1":"#9aa4af";ctx.lineWidth=2;
+ctx.beginPath();ctx.moveTo(-30,-12);ctx.lineTo(-4,5);ctx.lineTo(18,-18);ctx.stroke();
+ctx.beginPath();ctx.moveTo(-20,34);ctx.lineTo(10,19);ctx.lineTo(35,39);ctx.stroke();
+ctx.fillStyle=voidy?"#cc7bff":"#9cecff";ctx.fillRect(-18,-17,9,6);ctx.fillRect(11,-17,9,6);
+ctx.fillStyle="#1a1a1d";ctx.fillRect(-16,-15,3,3);ctx.fillRect(13,-15,3,3);
+}
+ctx.restore();
+}
+function drawEnemy(){
+if(!state.currentEnemy)return;let x=930,y=430;if(state.enemyHitAnim>0)x+=Math.sin(state.enemyHitAnim*1.8)*8;if(state.enemyAttackAnim>0)x-=Math.sin((12-state.enemyAttackAnim)/12*Math.PI)*34;
+let scale=state.currentEnemy.boss?1.5:1.0;if(state.currentEnemy.kind==="earthTitan")scale=1.85;
+drawMonsterShape(state.currentEnemy.kind,x,y,scale);
+if(state.enemyFrozen){ctx.fillStyle="rgba(90,210,255,.18)";ctx.strokeStyle="#9fefff";ctx.lineWidth=4;ctx.beginPath();ctx.arc(x,y,92,0,Math.PI*2);ctx.fill();ctx.stroke()}
+if(state.enemyBurn>0){ctx.fillStyle="rgba(255,90,30,.25)";ctx.beginPath();ctx.arc(x,y,88,0,Math.PI*2);ctx.fill()}
+}
+
+function drawLabels(){
+ctx.save();ctx.fillStyle="rgba(7,10,16,.72)";ctx.fillRect(18,18,270,58);ctx.fillRect(860,18,300,58);
+ctx.fillStyle="#eef4ff";ctx.font="bold 18px Arial";ctx.fillText(`Wave ${state.wave}`,34,42);ctx.font="13px Arial";ctx.fillStyle="#aebbd2";ctx.fillText(state.wave%10===0?"BOSS WAVE":"EARTH",34,62);
+if(state.currentEnemy){ctx.textAlign="right";ctx.fillStyle="#eef4ff";ctx.font="bold 18px Arial";ctx.fillText(state.currentEnemy.name,1142,42);ctx.font="13px Arial";ctx.fillStyle="#aebbd2";ctx.fillText(state.currentEnemy.boss?"BOSS":"MONSTER",1142,62)}
+if(pet()){ctx.textAlign="left";ctx.fillStyle="rgba(7,10,16,.68)";ctx.fillRect(245,325,230,45);ctx.fillStyle="#eef4ff";ctx.font="bold 15px Arial";ctx.fillText(pet().name,258,345);ctx.fillStyle="#aebbd2";ctx.font="11px Arial";ctx.fillText(`${pet().rank}-Rank ${pet().element}`,258,362)}
+ctx.restore();
+}
+
+function gameLoop(){
+ctx.save();if(state.shake>0){ctx.translate((Math.random()-.5)*state.shake,(Math.random()-.5)*state.shake);state.shake*=.75;if(state.shake<.4)state.shake=0}
+drawBackground();drawHero(155,440);drawPet();drawEnemy();drawLabels();
+if(state.hatchFlash>0){ctx.fillStyle=`rgba(255,255,255,${state.hatchFlash/50})`;ctx.fillRect(0,0,canvas.width,canvas.height);state.hatchFlash--}
+ctx.restore();
+if(state.heroAttackAnim>0)state.heroAttackAnim--;if(state.petAttackAnim>0)state.petAttackAnim--;if(state.enemyHitAnim>0)state.enemyHitAnim--;if(state.enemyAttackAnim>0)state.enemyAttackAnim--;
+requestAnimationFrame(gameLoop);
+}
+
+document.getElementById("attackBtn").onclick=basicAttack;
+document.getElementById("movesBtn").onclick=()=>{renderHeroMoves();openOverlay("heroMovesOverlay")};
+document.getElementById("petMovesBtn").onclick=()=>{renderPetMoves();openOverlay("petMovesOverlay")};
+document.getElementById("inventoryBtn").onclick=()=>{renderInventory();openOverlay("inventoryOverlay")};
+document.getElementById("shopBtn").onclick=()=>{renderShop();openOverlay("shopOverlay")};
+document.getElementById("closeInventory").onclick=()=>closeOverlay("inventoryOverlay");
+document.getElementById("closeShop").onclick=()=>closeOverlay("shopOverlay");
+document.getElementById("closeHeroMoves").onclick=()=>closeOverlay("heroMovesOverlay");
+document.getElementById("closePetMoves").onclick=()=>closeOverlay("petMovesOverlay");
+
+document.querySelectorAll("[data-invtab]").forEach(b=>b.onclick=()=>{document.querySelectorAll("[data-invtab]").forEach(x=>x.classList.remove("active"));b.classList.add("active");invTab=b.dataset.invtab;renderInventory()});
+document.querySelectorAll("[data-shoptab]").forEach(b=>b.onclick=()=>{document.querySelectorAll("[data-shoptab]").forEach(x=>x.classList.remove("active"));b.classList.add("active");shopTab=b.dataset.shoptab;renderShop()});
+
+if(!state.currentEnemy)startWave();else updateUI();
+gameLoop();
+</script>
 </body>
 </html>
-'''
-
-style_css = r'''* {
-  box-sizing: border-box;
-}
-
-:root {
-  --bg: #10141e;
-  --panel: #1a2130;
-  --panel-2: #222b3d;
-  --text: #eef3ff;
-  --muted: #9eabc3;
-  --border: #33405a;
-  --gold: #ffd76a;
-  --green: #4ed47b;
-  --red: #ef6464;
-  --blue: #63a9ff;
-  --purple: #b27cff;
-}
-
-body {
-  margin: 0;
-  font-family: Inter, system-ui, Arial, sans-serif;
-  background:
-    radial-gradient(circle at 20% 10%, #1b2942 0, transparent 35%),
-    radial-gradient(circle at 85% 20%, #34204f 0, transparent 30%),
-    var(--bg);
-  color: var(--text);
-  min-height: 100vh;
-}
-
-button {
-  border: 0;
-  border-radius: 12px;
-  padding: 11px 16px;
-  font-weight: 800;
-  cursor: pointer;
-  color: #0f1420;
-}
-
-button:disabled {
-  opacity: .45;
-  cursor: not-allowed;
-}
-
-.game-shell {
-  width: min(1500px, 96%);
-  margin: 0 auto;
-  padding: 22px 0 50px;
-}
-
-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 20px;
-}
-
-h1 {
-  margin: 0;
-  font-size: clamp(28px, 5vw, 54px);
-  letter-spacing: 2px;
-}
-
-.subtitle {
-  margin: 4px 0 0;
-  color: var(--muted);
-}
-
-.top-buttons {
-  display: flex;
-  gap: 10px;
-}
-
-.world-card {
-  margin: 20px 0;
-  background: rgba(26, 33, 48, .92);
-  border: 1px solid var(--border);
-  border-radius: 18px;
-  padding: 16px;
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 12px;
-}
-
-.world-card > div {
-  background: var(--panel-2);
-  padding: 13px;
-  border-radius: 13px;
-}
-
-.label {
-  font-size: 11px;
-  color: var(--muted);
-  letter-spacing: 1.3px;
-  font-weight: 800;
-}
-
-.big-value {
-  margin-top: 4px;
-  font-size: 19px;
-  font-weight: 900;
-}
-
-.battle-grid {
-  display: grid;
-  grid-template-columns: 1fr 1.25fr 1fr;
-  gap: 16px;
-}
-
-.panel {
-  background: rgba(26, 33, 48, .94);
-  border: 1px solid var(--border);
-  border-radius: 18px;
-  padding: 18px;
-  box-shadow: 0 15px 40px rgba(0,0,0,.18);
-}
-
-.panel h2 {
-  margin: 0 0 12px;
-}
-
-.center-panel {
-  text-align: center;
-}
-
-.portrait {
-  height: 145px;
-  display: grid;
-  place-items: center;
-  font-size: 90px;
-  background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.01));
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  margin-bottom: 16px;
-}
-
-.hero {
-  background: radial-gradient(circle, rgba(99,169,255,.22), rgba(99,169,255,.02));
-}
-
-.enemy {
-  background: radial-gradient(circle, rgba(239,100,100,.23), rgba(239,100,100,.02));
-}
-
-.bar-wrap {
-  margin: 11px 0;
-}
-
-.bar-label {
-  display: flex;
-  justify-content: space-between;
-  font-size: 12px;
-  font-weight: 800;
-  margin-bottom: 5px;
-}
-
-.bar {
-  height: 14px;
-  background: #0d111a;
-  border-radius: 999px;
-  overflow: hidden;
-  border: 1px solid var(--border);
-}
-
-.fill {
-  height: 100%;
-  width: 50%;
-  transition: width .25s ease;
-}
-
-.hp { background: var(--green); }
-.enemyhp { background: var(--red); }
-.xp { background: var(--blue); }
-
-.stats, .enemy-stats {
-  margin: 15px 0;
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
-}
-
-.stat {
-  background: var(--panel-2);
-  border-radius: 10px;
-  padding: 9px;
-  font-size: 13px;
-}
-
-.gear-box {
-  margin-top: 14px;
-  padding: 12px;
-  background: var(--panel-2);
-  border-radius: 13px;
-}
-
-.gear-box h3 {
-  margin: 0 0 8px;
-}
-
-.gear-box p {
-  margin: 5px 0;
-  font-size: 13px;
-}
-
-.encounter-tag {
-  display: inline-block;
-  padding: 6px 10px;
-  border-radius: 999px;
-  background: #29354d;
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 900;
-  letter-spacing: 1px;
-  margin-bottom: 8px;
-}
-
-.boss-tag {
-  background: #5a2030;
-  color: #ffc4d0;
-}
-
-.world-boss-tag {
-  background: #5d3c00;
-  color: #ffe39c;
-}
-
-.actions {
-  display: grid;
-  gap: 9px;
-  margin: 16px 0;
-}
-
-.attack {
-  background: linear-gradient(180deg, #ffdd70, #f3b844);
-  font-size: 19px;
-  padding: 15px;
-}
-
-.secondary {
-  background: #dce6ff;
-}
-
-.danger {
-  background: #ffb1b1;
-}
-
-.merchant {
-  background: #c99cff;
-}
-
-.next {
-  background: #8cf0ad;
-}
-
-.battle-log {
-  height: 180px;
-  overflow-y: auto;
-  text-align: left;
-  background: #0f141e;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 11px;
-  font-size: 13px;
-  line-height: 1.45;
-}
-
-.log-line {
-  margin-bottom: 6px;
-}
-
-.tabs {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 5px;
-}
-
-.tab {
-  background: #2a3448;
-  color: var(--muted);
-  padding: 8px;
-}
-
-.tab.active {
-  background: #dfe8ff;
-  color: #111725;
-}
-
-.inventory-list {
-  margin-top: 12px;
-  display: grid;
-  gap: 8px;
-  max-height: 450px;
-  overflow-y: auto;
-}
-
-.item {
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 10px;
-  background: var(--panel-2);
-}
-
-.item-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-}
-
-.item-name {
-  font-weight: 900;
-}
-
-.rank {
-  display: inline-block;
-  min-width: 34px;
-  text-align: center;
-  border-radius: 8px;
-  padding: 3px 7px;
-  font-size: 12px;
-  font-weight: 900;
-  background: #111725;
-  border: 1px solid #495a7b;
-}
-
-.item-desc {
-  color: var(--muted);
-  margin: 6px 0 8px;
-  font-size: 12px;
-}
-
-.item button {
-  width: 100%;
-  padding: 8px;
-  font-size: 12px;
-  background: #cfe0ff;
-}
-
-.merchant-panel {
-  margin-top: 16px;
-}
-
-.merchant-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.merchant-head p {
-  color: var(--muted);
-  margin: 3px 0 0;
-}
-
-.shop-grid {
-  margin-top: 14px;
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
-}
-
-.shop-item {
-  background: var(--panel-2);
-  padding: 12px;
-  border-radius: 12px;
-  border: 1px solid var(--border);
-}
-
-.shop-item h3 {
-  margin: 4px 0;
-  font-size: 15px;
-}
-
-.shop-item p {
-  color: var(--muted);
-  font-size: 12px;
-  min-height: 32px;
-}
-
-.shop-item button {
-  width: 100%;
-  background: var(--gold);
-}
-
-.roadmap {
-  margin-top: 16px;
-}
-
-.worlds {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-}
-
-.world {
-  background: var(--panel-2);
-  padding: 18px;
-  border-radius: 13px;
-  text-align: center;
-  font-size: 20px;
-  font-weight: 900;
-}
-
-.world small {
-  color: var(--muted);
-  font-weight: 600;
-}
-
-.active-world {
-  outline: 2px solid var(--blue);
-}
-
-.locked {
-  opacity: .45;
-}
-
-.roadmap-note {
-  color: var(--muted);
-  margin-bottom: 0;
-}
-
-.hidden {
-  display: none !important;
-}
-
-@media (max-width: 1000px) {
-  .battle-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .world-card {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .shop-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 600px) {
-  .world-card, .shop-grid, .worlds {
-    grid-template-columns: 1fr;
-  }
-
-  header {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-}
-'''
-
-script_js = r'''const RANKS = ["D", "C", "B", "A", "S", "SS", "SSS", "X"];
-
-const weaponCatalog = [
-  { id:"rusty_sword", name:"Rusty Sword", rank:"D", attack:3, price:20, desc:"+3 Attack" },
-  { id:"iron_sword", name:"Iron Sword", rank:"D", attack:6, price:45, desc:"+6 Attack" },
-  { id:"hunter_blade", name:"Hunter Blade", rank:"C", attack:11, price:100, desc:"+11 Attack" },
-  { id:"knight_blade", name:"Knight Blade", rank:"C", attack:16, price:170, desc:"+16 Attack" },
-  { id:"earthsplitter", name:"Earthsplitter", rank:"B", attack:25, price:320, desc:"+25 Attack" },
-  { id:"titan_edge", name:"Titan Edge", rank:"B", attack:35, price:550, desc:"+35 Attack" },
-  { id:"flame_sword", name:"Flame Sword", rank:"A", attack:50, price:900, desc:"+50 Attack · Future rare Earth drop" },
-  { id:"dragon_blade", name:"Dragon Blade", rank:"S", attack:80, price:1800, desc:"+80 Attack · Future world gear" },
-];
-
-const armorCatalog = [
-  { id:"cloth_armor", name:"Cloth Armor", rank:"D", defense:2, hp:5, price:20, desc:"+2 Defense · +5 HP" },
-  { id:"leather_armor", name:"Leather Armor", rank:"D", defense:4, hp:10, price:50, desc:"+4 Defense · +10 HP" },
-  { id:"iron_armor", name:"Iron Armor", rank:"C", defense:8, hp:20, price:120, desc:"+8 Defense · +20 HP" },
-  { id:"knight_armor", name:"Knight Armor", rank:"C", defense:12, hp:35, price:210, desc:"+12 Defense · +35 HP" },
-  { id:"guardian_plate", name:"Guardian Plate", rank:"B", defense:18, hp:60, price:380, desc:"+18 Defense · +60 HP" },
-  { id:"titan_armor", name:"Titan Armor", rank:"B", defense:26, hp:90, price:620, desc:"+26 Defense · +90 HP" },
-];
-
-const petCatalog = [
-  { id:"tiny_slime", name:"Tiny Slime", rank:"D", ability:"heal", power:4, price:70, desc:"Healing · 25% chance to heal 4 HP after attacking" },
-  { id:"wolf_pup", name:"Wolf Pup", rank:"D", ability:"combat", power:4, price:85, desc:"Combat · Deals +4 damage every attack" },
-  { id:"frost_bunny", name:"Frost Bunny", rank:"C", ability:"ice", power:7, price:180, desc:"Ice · 20% chance to freeze enemy for 1 turn" },
-  { id:"spark_fox", name:"Spark Fox", rank:"C", ability:"thunder", power:10, price:220, desc:"Thunder · 20% chance to strike for +10 damage" },
-];
-
-const monsters = [
-  { name:"Green Slime", emoji:"🟢", hp:25, attack:5, defense:0, coins:8, xp:12 },
-  { name:"Wild Rat", emoji:"🐀", hp:30, attack:6, defense:1, coins:10, xp:14 },
-  { name:"Forest Bat", emoji:"🦇", hp:34, attack:7, defense:1, coins:11, xp:16 },
-  { name:"Goblin", emoji:"👺", hp:42, attack:8, defense:2, coins:14, xp:18 },
-  { name:"Wolf", emoji:"🐺", hp:48, attack:10, defense:2, coins:16, xp:21 },
-  { name:"Skeleton", emoji:"💀", hp:55, attack:11, defense:3, coins:18, xp:24 },
-  { name:"Orc", emoji:"👹", hp:66, attack:13, defense:4, coins:21, xp:27 },
-  { name:"Stone Golem", emoji:"🗿", hp:78, attack:14, defense:6, coins:24, xp:31 },
-];
-
-const bosses = [
-  { round:10, name:"Goblin King", emoji:"👑", hp:170, attack:16, defense:5, coins:80, xp:80 },
-  { round:20, name:"Dire Wolf Alpha", emoji:"🐺", hp:270, attack:22, defense:7, coins:120, xp:120 },
-  { round:30, name:"Skeleton Warlord", emoji:"☠️", hp:400, attack:29, defense:10, coins:170, xp:170 },
-  { round:40, name:"Cave Troll", emoji:"🧌", hp:560, attack:36, defense:12, coins:230, xp:230 },
-  { round:50, name:"Ancient Golem", emoji:"🗿", hp:760, attack:45, defense:16, coins:300, xp:300 },
-  { round:60, name:"Storm Griffin", emoji:"🦅", hp:980, attack:55, defense:18, coins:390, xp:390 },
-  { round:70, name:"Dread Knight", emoji:"🗡️", hp:1250, attack:66, defense:22, coins:500, xp:500 },
-  { round:80, name:"Earth Hydra", emoji:"🐉", hp:1600, attack:78, defense:26, coins:650, xp:650 },
-  { round:90, name:"Ancient Dragon", emoji:"🐲", hp:2050, attack:92, defense:30, coins:850, xp:850 },
-  { round:100, name:"EARTH TITAN", emoji:"🌎", hp:3000, attack:115, defense:36, coins:1500, xp:1500, worldBoss:true },
-];
-
-const defaultState = () => ({
-  round: 1,
-  world: 1,
-  coins: 0,
-  eventCoins: 0,
-  level: 1,
-  xp: 0,
-  xpToNext: 50,
-  baseMaxHp: 100,
-  hp: 100,
-  baseAttack: 10,
-  baseDefense: 2,
-  potions: 2,
-  weapons: [],
-  armor: [],
-  pets: [],
-  equippedWeapon: null,
-  equippedArmor: null,
-  equippedPet: null,
-  enemy: null,
-  enemyHp: 0,
-  battleWon: false,
-  merchantAvailable: false,
-  frozenEnemy: false,
-});
-
-let state = loadState() || defaultState();
-let currentTab = "weapons";
-
-const el = id => document.getElementById(id);
-
-function rankIndex(rank) {
-  return RANKS.indexOf(rank);
-}
-
-function getWeapon() {
-  return weaponCatalog.find(i => i.id === state.equippedWeapon);
-}
-
-function getArmor() {
-  return armorCatalog.find(i => i.id === state.equippedArmor);
-}
-
-function getPet() {
-  return petCatalog.find(i => i.id === state.equippedPet);
-}
-
-function maxHp() {
-  const armor = getArmor();
-  return state.baseMaxHp + (armor?.hp || 0);
-}
-
-function totalAttack() {
-  const weapon = getWeapon();
-  return state.baseAttack + (weapon?.attack || 0);
-}
-
-function totalDefense() {
-  const armor = getArmor();
-  return state.baseDefense + (armor?.defense || 0);
-}
-
-function saveState(showMessage = true) {
-  localStorage.setItem("rankbound_save_v01", JSON.stringify(state));
-  if (showMessage) addLog("💾 Game saved.");
-}
-
-function loadState() {
-  try {
-    const raw = localStorage.getItem("rankbound_save_v01");
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-}
-
-function resetGame() {
-  if (!confirm("Reset ALL progress? This cannot be undone.")) return;
-  localStorage.removeItem("rankbound_save_v01");
-  state = defaultState();
-  spawnEnemy();
-  addLog("🌍 A new adventure begins on Earth.");
-  render();
-}
-
-function worldName() {
-  if (state.round <= 100) return "🌍 Earth";
-  if (state.round <= 200) return "🍄 Mushroom Planet";
-  if (state.round <= 300) return "☀️ Sun World";
-  return "🌌 Unknown World";
-}
-
-function scaleForRound(round) {
-  return 1 + (round - 1) * 0.085;
-}
-
-function spawnEnemy() {
-  state.battleWon = false;
-  state.frozenEnemy = false;
-
-  const bossTemplate = bosses.find(b => b.round === state.round);
-  if (bossTemplate) {
-    state.enemy = { ...bossTemplate, boss:true };
-  } else {
-    const m = monsters[Math.min(monsters.length - 1, Math.floor((state.round - 1) / 4))];
-    const scale = scaleForRound(state.round);
-    state.enemy = {
-      ...m,
-      hp: Math.round(m.hp * scale),
-      attack: Math.round(m.attack * (1 + (state.round - 1) * 0.055)),
-      defense: Math.round(m.defense + state.round * 0.12),
-      coins: Math.round(m.coins * (1 + state.round * 0.06)),
-      xp: Math.round(m.xp * (1 + state.round * 0.045)),
-      boss:false
-    };
-  }
-
-  state.enemyHp = state.enemy.hp;
-  addLog(`⚠️ ${state.enemy.name} appeared!`);
-  render();
-}
-
-function addLog(message) {
-  const log = el("battleLog");
-  if (!log) return;
-  const line = document.createElement("div");
-  line.className = "log-line";
-  line.textContent = message;
-  log.prepend(line);
-}
-
-function attackEnemy() {
-  if (state.battleWon || state.hp <= 0) return;
-
-  const crit = Math.random() < 0.12;
-  let damage = Math.max(1, totalAttack() - state.enemy.defense + Math.floor(Math.random() * 5));
-  if (crit) damage = Math.round(damage * 1.8);
-
-  const pet = getPet();
-
-  if (pet?.ability === "combat") {
-    damage += pet.power;
-    addLog(`🐾 ${pet.name} joins your attack for +${pet.power} damage!`);
-  }
-
-  if (pet?.ability === "thunder" && Math.random() < 0.20) {
-    damage += pet.power;
-    addLog(`⚡ ${pet.name} calls lightning for +${pet.power} damage!`);
-  }
-
-  if (pet?.ability === "ice" && Math.random() < 0.20) {
-    state.frozenEnemy = true;
-    addLog(`❄️ ${pet.name} freezes the enemy!`);
-  }
-
-  state.enemyHp = Math.max(0, state.enemyHp - damage);
-  addLog(`${crit ? "💥 CRITICAL! " : "⚔️ "}You deal ${damage} damage.`);
-
-  if (pet?.ability === "heal" && Math.random() < 0.25) {
-    const oldHp = state.hp;
-    state.hp = Math.min(maxHp(), state.hp + pet.power);
-    addLog(`💚 ${pet.name} heals you for ${state.hp - oldHp} HP.`);
-  }
-
-  if (state.enemyHp <= 0) {
-    winBattle();
-    return;
-  }
-
-  enemyTurn();
-  render();
-}
-
-function enemyTurn() {
-  if (state.frozenEnemy) {
-    state.frozenEnemy = false;
-    addLog(`🧊 ${state.enemy.name} is frozen and misses its turn!`);
-    return;
-  }
-
-  const damage = Math.max(1, state.enemy.attack - totalDefense() + Math.floor(Math.random() * 4));
-  state.hp = Math.max(0, state.hp - damage);
-  addLog(`💢 ${state.enemy.name} hits you for ${damage} damage.`);
-
-  if (state.hp <= 0) {
-    const lost = Math.floor(state.coins * 0.10);
-    state.coins -= lost;
-    state.hp = maxHp();
-    addLog(`💀 You were defeated. You lost ${lost} coins and recovered at camp.`);
-    spawnEnemy();
-  }
-}
-
-function winBattle() {
-  state.battleWon = true;
-  state.coins += state.enemy.coins;
-  gainXp(state.enemy.xp);
-  addLog(`🏆 Victory! +${state.enemy.coins} coins and +${state.enemy.xp} XP.`);
-
-  if (state.enemy.boss) {
-    const chance = state.enemy.worldBoss ? 0.75 : 0.30;
-    if (Math.random() < chance) {
-      const amount = state.enemy.worldBoss ? 3 : 1;
-      state.eventCoins += amount;
-      addLog(`✨ Boss drop! You found ${amount} Event Coin${amount > 1 ? "s" : ""}!`);
-    }
-
-    bossDrop();
-  } else {
-    normalDrop();
-  }
-
-  if (state.round % 5 === 0 || Math.random() < 0.15) {
-    state.merchantAvailable = true;
-    addLog("🧙 A wandering merchant has appeared.");
-  } else {
-    state.merchantAvailable = false;
-  }
-
-  saveState(false);
-  render();
-}
-
-function gainXp(amount) {
-  state.xp += amount;
-
-  while (state.xp >= state.xpToNext) {
-    state.xp -= state.xpToNext;
-    state.level++;
-    state.xpToNext = Math.round(state.xpToNext * 1.22);
-    state.baseMaxHp += 12;
-    state.baseAttack += 3;
-    state.baseDefense += 1;
-    state.hp = maxHp();
-    addLog(`🌟 LEVEL UP! You are now Level ${state.level}. Your stats increased!`);
-  }
-}
-
-function normalDrop() {
-  if (Math.random() > 0.17) return;
-
-  const possible = [
-    ...weaponCatalog.filter(i => rankIndex(i.rank) <= 1),
-    ...armorCatalog.filter(i => rankIndex(i.rank) <= 1)
-  ];
-  const item = possible[Math.floor(Math.random() * possible.length)];
-  addItem(item);
-  addLog(`🎁 Rare drop: ${item.rank}-Rank ${item.name}!`);
-}
-
-function bossDrop() {
-  const maxRank = state.round >= 70 ? 2 : state.round >= 30 ? 1 : 0;
-  const pool = [
-    ...weaponCatalog.filter(i => rankIndex(i.rank) <= maxRank),
-    ...armorCatalog.filter(i => rankIndex(i.rank) <= maxRank),
-    ...petCatalog.filter(i => rankIndex(i.rank) <= Math.min(1, maxRank))
-  ];
-  const item = pool[Math.floor(Math.random() * pool.length)];
-  addItem(item);
-  addLog(`👑 BOSS DROP: ${item.rank}-Rank ${item.name}!`);
-}
-
-function addItem(item) {
-  if (weaponCatalog.some(i => i.id === item.id)) {
-    if (!state.weapons.includes(item.id)) state.weapons.push(item.id);
-  } else if (armorCatalog.some(i => i.id === item.id)) {
-    if (!state.armor.includes(item.id)) state.armor.push(item.id);
-  } else if (petCatalog.some(i => i.id === item.id)) {
-    if (!state.pets.includes(item.id)) state.pets.push(item.id);
-  }
-}
-
-function usePotion() {
-  if (state.potions <= 0 || state.hp >= maxHp() || state.battleWon) return;
-  const heal = Math.round(maxHp() * 0.40);
-  const before = state.hp;
-  state.hp = Math.min(maxHp(), state.hp + heal);
-  state.potions--;
-  addLog(`🧪 Potion restores ${state.hp - before} HP.`);
-  enemyTurn();
-  render();
-}
-
-function nextRound() {
-  if (!state.battleWon) return;
-
-  if (state.round === 100) {
-    addLog("🌌 EARTH COMPLETE! The portal to Mushroom Planet will open in a future update!");
-    alert("🌍 EARTH COMPLETE!\n\nYou defeated the Earth Titan!\n\n🍄 Mushroom Planet is planned for Version 0.2+.");
-    return;
-  }
-
-  state.round++;
-  state.hp = Math.min(maxHp(), state.hp + Math.round(maxHp() * 0.15));
-  state.merchantAvailable = false;
-  spawnEnemy();
-  saveState(false);
-}
-
-function equip(type, id) {
-  if (type === "weapons") state.equippedWeapon = id;
-  if (type === "armor") {
-    const oldMax = maxHp();
-    state.equippedArmor = id;
-    const newMax = maxHp();
-    state.hp = Math.min(newMax, state.hp + Math.max(0, newMax - oldMax));
-  }
-  if (type === "pets") state.equippedPet = id;
-
-  const catalog = type === "weapons" ? weaponCatalog : type === "armor" ? armorCatalog : petCatalog;
-  const item = catalog.find(i => i.id === id);
-  addLog(`✅ Equipped ${item.name}.`);
-  saveState(false);
-  render();
-}
-
-function merchantStock() {
-  const allowedRank = state.round >= 60 ? 2 : state.round >= 25 ? 1 : 0;
-
-  let pool = [
-    ...weaponCatalog.filter(i => rankIndex(i.rank) <= allowedRank),
-    ...armorCatalog.filter(i => rankIndex(i.rank) <= allowedRank),
-    ...petCatalog.filter(i => rankIndex(i.rank) <= Math.min(1, allowedRank))
-  ];
-
-  pool = [...pool].sort(() => Math.random() - 0.5).slice(0, 5);
-
-  return [
-    ...pool,
-    { id:"potion_shop", name:"Health Potion", rank:"D", price:35, shopType:"potion", desc:"Restores 40% max HP in battle." }
-  ];
-}
-
-let currentMerchantStock = [];
-
-function openMerchant() {
-  if (!state.merchantAvailable) return;
-  currentMerchantStock = merchantStock();
-  el("merchantPanel").classList.remove("hidden");
-  renderMerchant();
-}
-
-function renderMerchant() {
-  const box = el("merchantItems");
-  box.innerHTML = "";
-
-  currentMerchantStock.forEach(item => {
-    const owned =
-      state.weapons.includes(item.id) ||
-      state.armor.includes(item.id) ||
-      state.pets.includes(item.id);
-
-    const div = document.createElement("div");
-    div.className = "shop-item";
-    div.innerHTML = `
-      <span class="rank">${item.rank}</span>
-      <h3>${item.name}</h3>
-      <p>${item.desc}</p>
-      <button ${owned && item.shopType !== "potion" ? "disabled" : ""}>
-        ${owned && item.shopType !== "potion" ? "Owned" : `Buy · ${item.price} 🪙`}
-      </button>
-    `;
-
-    div.querySelector("button").onclick = () => buyItem(item);
-    box.appendChild(div);
-  });
-}
-
-function buyItem(item) {
-  if (state.coins < item.price) {
-    addLog("❌ Not enough coins.");
-    return;
-  }
-
-  state.coins -= item.price;
-
-  if (item.shopType === "potion") {
-    state.potions++;
-    addLog("🧪 Bought 1 Health Potion.");
-  } else {
-    addItem(item);
-    addLog(`🛒 Bought ${item.rank}-Rank ${item.name}.`);
-  }
-
-  saveState(false);
-  render();
-  renderMerchant();
-}
-
-function renderInventory() {
-  const box = el("inventoryList");
-  box.innerHTML = "";
-
-  const catalog = currentTab === "weapons" ? weaponCatalog : currentTab === "armor" ? armorCatalog : petCatalog;
-  const ownedIds = currentTab === "weapons" ? state.weapons : currentTab === "armor" ? state.armor : state.pets;
-  const equippedId = currentTab === "weapons" ? state.equippedWeapon : currentTab === "armor" ? state.equippedArmor : state.equippedPet;
-
-  if (ownedIds.length === 0) {
-    box.innerHTML = `<div class="item"><div class="item-desc">No ${currentTab} yet. Defeat monsters, bosses, or visit merchants.</div></div>`;
-    return;
-  }
-
-  ownedIds
-    .map(id => catalog.find(i => i.id === id))
-    .filter(Boolean)
-    .sort((a,b) => rankIndex(b.rank) - rankIndex(a.rank))
-    .forEach(item => {
-      const div = document.createElement("div");
-      div.className = "item";
-      div.innerHTML = `
-        <div class="item-top">
-          <div class="item-name">${item.name}</div>
-          <span class="rank">${item.rank}</span>
-        </div>
-        <div class="item-desc">${item.desc}</div>
-        <button ${equippedId === item.id ? "disabled" : ""}>
-          ${equippedId === item.id ? "Equipped" : "Equip"}
-        </button>
-      `;
-      div.querySelector("button").onclick = () => equip(currentTab, item.id);
-      box.appendChild(div);
-    });
-}
-
-function render() {
-  if (!state.enemy) spawnEnemy();
-
-  el("worldName").textContent = worldName();
-  el("roundText").textContent = `${state.round} / 100`;
-  el("levelText").textContent = state.level;
-  el("coinText").textContent = `${state.coins} 🪙`;
-  el("eventCoinText").textContent = `${state.eventCoins} ✨`;
-
-  el("playerHpText").textContent = `${state.hp} / ${maxHp()}`;
-  el("playerHpBar").style.width = `${Math.max(0, state.hp / maxHp() * 100)}%`;
-
-  el("xpText").textContent = `${state.xp} / ${state.xpToNext}`;
-  el("xpBar").style.width = `${Math.min(100, state.xp / state.xpToNext * 100)}%`;
-
-  el("playerStats").innerHTML = `
-    <div class="stat">⚔️ Attack<br><b>${totalAttack()}</b></div>
-    <div class="stat">🛡️ Defense<br><b>${totalDefense()}</b></div>
-    <div class="stat">❤️ Max HP<br><b>${maxHp()}</b></div>
-    <div class="stat">🧪 Potions<br><b>${state.potions}</b></div>
-  `;
-
-  const weapon = getWeapon();
-  const armor = getArmor();
-  const pet = getPet();
-
-  el("weaponText").textContent = `Weapon: ${weapon ? `[${weapon.rank}] ${weapon.name}` : "None"}`;
-  el("armorText").textContent = `Armor: ${armor ? `[${armor.rank}] ${armor.name}` : "None"}`;
-  el("petText").textContent = `Pet: ${pet ? `[${pet.rank}] ${pet.name}` : "None"}`;
-
-  el("enemyName").textContent = state.enemy.name;
-  el("enemyEmoji").textContent = state.enemy.emoji;
-  el("enemyHpText").textContent = `${state.enemyHp} / ${state.enemy.hp}`;
-  el("enemyHpBar").style.width = `${Math.max(0, state.enemyHp / state.enemy.hp * 100)}%`;
-
-  el("enemyStats").innerHTML = `
-    <div class="stat">⚔️ Attack<br><b>${state.enemy.attack}</b></div>
-    <div class="stat">🛡️ Defense<br><b>${state.enemy.defense}</b></div>
-    <div class="stat">🪙 Reward<br><b>${state.enemy.coins}</b></div>
-    <div class="stat">⭐ XP<br><b>${state.enemy.xp}</b></div>
-  `;
-
-  const tag = el("encounterTag");
-  if (state.enemy.worldBoss) {
-    tag.textContent = "🌎 WORLD BOSS";
-    tag.className = "encounter-tag world-boss-tag";
-  } else if (state.enemy.boss) {
-    tag.textContent = "👑 BOSS ENCOUNTER";
-    tag.className = "encounter-tag boss-tag";
-  } else {
-    tag.textContent = "NORMAL ENCOUNTER";
-    tag.className = "encounter-tag";
-  }
-
-  el("attackBtn").disabled = state.battleWon;
-  el("healBtn").disabled = state.battleWon || state.potions <= 0 || state.hp >= maxHp();
-  el("potionCount").textContent = state.potions;
-
-  el("nextBtn").classList.toggle("hidden", !state.battleWon);
-  el("merchantBtn").classList.toggle("hidden", !(state.battleWon && state.merchantAvailable));
-
-  renderInventory();
-}
-
-document.querySelectorAll(".tab").forEach(btn => {
-  btn.addEventListener("click", () => {
-    document.querySelectorAll(".tab").forEach(b => b.classList.remove("active"));
-    btn.classList.add("active");
-    currentTab = btn.dataset.tab;
-    renderInventory();
-  });
-});
-
-el("attackBtn").onclick = attackEnemy;
-el("healBtn").onclick = usePotion;
-el("nextBtn").onclick = nextRound;
-el("merchantBtn").onclick = openMerchant;
-el("closeMerchantBtn").onclick = () => el("merchantPanel").classList.add("hidden");
-el("saveBtn").onclick = () => saveState(true);
-el("resetBtn").onclick = resetGame;
-
-if (!state.enemy) spawnEnemy();
-render();
-addLog("⚔️ Welcome to Rankbound. Defeat monsters, level up, collect gear, and conquer Earth!");
-'''
-
-readme = r'''# ⚔️ Rankbound
-
-A browser battle RPG built with HTML, CSS, and JavaScript.
-
-## Version 0.1
-
-Current features:
-
-- Earth: Rounds 1–100
-- Boss every 10 rounds
-- World Boss at Round 100
-- Character levels and XP
-- Coins
-- Event Coins from bosses
-- Weapons and armor
-- Rank system: D, C, B, A, S, SS, SSS, X
-- Pets with healing, combat, ice, and thunder abilities
-- Wandering merchants
-- Item drops
-- Health potions
-- Local browser save system
-- Future worlds displayed: Mushroom Planet and Sun World
-
-## How to play locally
-
-Open `index.html` in a browser.
-
-## GitHub Pages
-
-Upload these files to a GitHub repository, then enable GitHub Pages for the repository to make the game playable online.
-
-## Planned updates
-
-- Mushroom Planet: Rounds 101–200
-- Sun World: Rounds 201–300
-- Event Shop
-- Event pets
-- More weapons and armor
-- S / SS / SSS / X gear
-- More boss abilities
-- Better graphics and animations
-- Character abilities
-- More worlds
-'''
-
-(base / "index.html").write_text(index_html, encoding="utf-8")
-(base / "style.css").write_text(style_css, encoding="utf-8")
-(base / "script.js").write_text(script_js, encoding="utf-8")
-(base / "README.md").write_text(readme, encoding="utf-8")
-
-zip_path = Path("/mnt/data/rankbound_v0_1.zip")
-with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as z:
-    for f in base.iterdir():
-        z.write(f, arcname=f.name)
-index.html
-
-print(f"Created: {zip_path}")
-print("Files:", ", ".join(p.name for p in base.iterdir()))
